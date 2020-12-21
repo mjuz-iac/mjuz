@@ -381,6 +381,7 @@ const webuiListener = loadBalancer.createListener('webui', {
 		port: webuiPort,
 		protocol: 'HTTP',
 		healthCheck: { path: '/tools.descartes.teastore.webui/' },
+		deregistrationDelay: 20, // wait only 20s for in-flight requests to complete on deregistration (draining duration)
 	},
 	external: true,
 });
