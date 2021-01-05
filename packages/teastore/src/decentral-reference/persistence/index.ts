@@ -11,7 +11,8 @@ const config = new pulumi.Config();
 const registryStack = new pulumi.StackReference(config.require('registryStack'));
 const stackInputs = [
 	registryStack.requireOutput('vpcId'),
-	registryStack.requireOutput('vpcPrivateSubnetsIds') as pulumi.Output<string[]>,
+	registryStack.requireOutput('vpcPrivateSubnetIds') as pulumi.Output<string[]>,
+	registryStack.requireOutput('vpcPublicSubnetIds') as pulumi.Output<string[]>,
 	registryStack.requireOutput('clusterName'),
 	registryStack.requireOutput('registrySGId'),
 	registryStack.requireOutput('registryPort'),
@@ -20,7 +21,8 @@ const stackInputs = [
 
 function deployment([
 	vpcId,
-	privateSubnetsIds,
+	privateSubnetIds,
+	publicSubnetIds,
 	clusterName,
 	registrySGId,
 	registryPort,
@@ -28,7 +30,8 @@ function deployment([
 ]: pulumi.Unwrap<typeof stackInputs>) {
 	const vpc = awsx.ec2.Vpc.fromExistingIds('vpc', {
 		vpcId: vpcId,
-		privateSubnetIds: privateSubnetsIds,
+		privateSubnetIds: privateSubnetIds,
+		publicSubnetIds: publicSubnetIds,
 	});
 	const cluster = new awsx.ecs.Cluster('cluster', {
 		vpc: vpc,

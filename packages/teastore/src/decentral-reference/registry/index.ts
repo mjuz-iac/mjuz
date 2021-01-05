@@ -107,7 +107,8 @@ new awsx.ecs.FargateService('registry', {
 
 module.exports = {
 	vpcId: vpc.id,
-	vpcPrivateSubnetsIds: vpc.getSubnetsIds('private'),
+	vpcPrivateSubnetIds: vpc.privateSubnetIds,
+	vpcPublicSubnetIds: vpc.publicSubnetIds,
 	clusterName: cluster.cluster.name,
 	registrySGId: registrySG.id,
 	registryPort: registryPort,
