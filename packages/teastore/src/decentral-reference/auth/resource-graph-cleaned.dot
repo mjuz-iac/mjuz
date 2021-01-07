@@ -1,0 +1,109 @@
+strict digraph {
+    Stack [label="[Stack]"];
+
+    XVPC [label="[x.Vpc] vpc"];
+    VPC [label="[Vpc] vpc"];
+
+    XCluster [label="[x.Cluster] cluster"];
+    Cluster [label="[Cluster] cluster"];
+
+    PubSubnet0X [label="[x.Subnet] vpc-public-0"];
+    PubSubnet0 [label="[Subnet] vpc-public-0"];
+    PubSubnet1X [label="[x.Subnet] vpc-public-1"];
+    PubSubnet1 [label="[Subnet] vpc-public-1"];
+    PrivSubnet0X [label="[x.Subnet] vpc-private-0"];
+    PrivSubnet0 [label="[Subnet] vpc-private-0"];
+    PrivSubnet1X [label="[x.Subnet] vpc-private-1"];
+    PrivSubnet1 [label="[Subnet] vpc-private-1"];
+
+    PersistenceSGX [label="[x.SecurityGroup] persistence"];
+    PersistenceSG [label="[SecurityGroup] persistence"];
+    PersistenceSGInboundX [label="[x.IngressSecurityGroupRule] persistence-inbound-auth"];
+    PersistenceSGInbound [label="[SecurityGroupRule] persistence-inbound-auth"];
+
+    RegistrySGX [label="[x.SecurityGroup] registry"];
+    RegistrySG [label="[SecurityGroup] registry"];
+    RegistrySGInboundX [label="[x.IngressSecurityGroupRule] registry-inbound-auth"];
+    RegistrySGInbound [label="[SecurityGroupRule] registry-inbound-auth"];
+
+    AuthSGX [label="[x.SecurityGroup] auth"];
+    AuthSG [label="[SecurityGroup] auth"];
+    AuthSGEgressX [label="[x.EgressSecurityGroupRule] auth-egress-0"];
+    AuthSGEgress [label="[SecurityGroupRule] auth-egress-0"];
+
+    # ECR
+    ECRRepo [label="[Repository] auth"];
+    ECRPolicy [label="[LifecyclePolicy] auth"];
+
+    ServiceX [label="[x.FargateService] auth"];
+    Service [label="[Service] auth"];
+
+    TaskDefX [label="[x.FargateTaskDefinition] auth"];
+    TaskDef [label="[TaskDefinition] auth"];
+    TaskRole [label="[Role] auth-task"];
+    TaskRolePolicy [label="[RolePolicyAttachment] auth-task-32be53a2"];
+    TaskRolePolicy2 [label="[RolePolicyAttachment] auth-task-fd1a00e5"];
+    ExecRole [label="[Role] auth-execution"];
+    ExecRolePolicy [label="[RolePolicyAttachment] auth-execution-9a42f520"];
+
+    LogGroup [label="[LogGroup] auth"];
+
+
+    PersistenceSGInbound -> PersistenceSGInboundX [color = "#AA6639"];
+    RegistrySGInbound -> RegistrySGInboundX [color = "#AA6639"];
+    XVPC -> Stack [color = "#AA6639"];
+    PersistenceSGInboundX -> PersistenceSGX [color = "#AA6639"];
+    TaskRole -> TaskRolePolicy [color = "#246C60", label = "role"];
+    TaskRole -> TaskRolePolicy2 [color = "#246C60", label = "role"];
+    TaskRole -> TaskDefX [color = "#AA6639"];
+    TaskRole -> TaskDef [color = "#246C60", label = "taskRoleArn"];
+    AuthSG -> AuthSGX [color = "#AA6639"];
+    AuthSG -> AuthSGEgress [color = "#246C60", label = "securityGroupId"];
+    AuthSG -> PersistenceSGInbound [color = "#246C60", label = "sourceSecurityGroupId"];
+    AuthSG -> RegistrySGInbound [color = "#246C60", label = "sourceSecurityGroupId"];
+    AuthSG -> Service [color = "#246C60", label = "networkConfiguration"];
+    AuthSGEgress -> AuthSGEgressX [color = "#AA6639"];
+    TaskDef -> Service [color = "#246C60", label = "taskDefinition"];
+    TaskDef -> TaskDefX [color = "#AA6639"];
+    Service -> ServiceX [color = "#AA6639"];
+    PersistenceSGX -> Stack [color = "#AA6639"];
+    RegistrySGX -> Stack [color = "#AA6639"];
+    AuthSGX -> Stack [color = "#AA6639"];
+    VPC -> AuthSG [color = "#246C60", label = "vpcId"];
+    VPC -> Stack [color = "#AA6639"];
+    XCluster -> Stack [color = "#AA6639"];
+    Cluster -> XCluster [color = "#AA6639"];
+    Cluster -> Service [color = "#246C60", label = "cluster"];
+    TaskRolePolicy -> TaskDefX [color = "#AA6639"];
+    ExecRolePolicy -> TaskDefX [color = "#AA6639"];
+    RegistrySGInboundX -> RegistrySGX [color = "#AA6639"];
+    PubSubnet0X -> XVPC [color = "#AA6639"];
+    PubSubnet0 -> XVPC [color = "#AA6639"];
+    PubSubnet0 -> Service [color = "#246C60", label = "networkConfiguration"];
+    PrivSubnet1 -> XVPC [color = "#AA6639"];
+    PrivSubnet1 -> Service [color = "#246C60", label = "networkConfiguration"];
+    ECRRepo -> TaskDefX [color = "#AA6639"];
+    ECRRepo -> ECRPolicy [color = "#246C60", label = "repository"];
+    ECRRepo -> TaskDef [color = "#246C60", label = "family, containerDefinitions"];
+    ECRPolicy -> TaskDefX [color = "#AA6639"];
+    ServiceX -> Stack [color = "#AA6639"];
+    PrivSubnet0X -> XVPC [color = "#AA6639"];
+    RegistrySG -> Stack [color = "#AA6639"];
+    RegistrySG -> RegistrySGInbound [color = "#246C60", label = "securityGroupId"];
+    PrivSubnet0 -> XVPC [color = "#AA6639"];
+    PrivSubnet0 -> Service [color = "#246C60", label = "networkConfiguration"];
+    PersistenceSG -> Stack [color = "#AA6639"];
+    PersistenceSG -> PersistenceSGInbound [color = "#246C60", label = "securityGroupId"];
+    ExecRole -> ExecRolePolicy [color = "#246C60", label = "role"];
+    ExecRole -> TaskDefX [color = "#AA6639"];
+    ExecRole -> TaskDef [color = "#246C60", label = "executionRoleArn"];
+    TaskDefX -> Stack [color = "#AA6639"];
+    PrivSubnet1X -> XVPC [color = "#AA6639"];
+    AuthSGEgressX -> AuthSGX [color = "#AA6639"];
+    PubSubnet1 -> XVPC [color = "#AA6639"];
+    PubSubnet1 -> Service [color = "#246C60", label = "networkConfiguration"];
+    LogGroup -> TaskDefX [color = "#AA6639"];
+    LogGroup -> TaskDef [color = "#246C60", label = "family, containerDefinitions"];
+    PubSubnet1X -> XVPC [color = "#AA6639"];
+    TaskRolePolicy2 -> TaskDefX [color = "#AA6639"];
+}
