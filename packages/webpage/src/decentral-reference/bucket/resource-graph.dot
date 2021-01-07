@@ -1,0 +1,9 @@
+strict digraph {
+    Resource0 [label="urn:pulumi:bucket::webpage::pulumi:pulumi:Stack::webpage-bucket"];
+    Resource1 [label="urn:pulumi:bucket::webpage::pulumi:providers:aws::default_3_22_0"];
+    Resource2 [label="urn:pulumi:bucket::webpage::aws:s3/bucket:Bucket::website"];
+    Resource2 -> Resource0 [color = "#AA6639"];
+    Resource2 -> Resource3 [color = "#246C60", label = "bucket, policy"];
+    Resource3 [label="urn:pulumi:bucket::webpage::aws:s3/bucketPolicy:BucketPolicy::bucket-contents-policy"];
+    Resource3 -> Resource0 [color = "#AA6639"];
+}

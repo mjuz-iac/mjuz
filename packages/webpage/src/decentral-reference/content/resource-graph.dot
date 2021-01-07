@@ -1,0 +1,10 @@
+strict digraph {
+    Resource0 [label="urn:pulumi:content::webpage::pulumi:pulumi:Stack::webpage-content"];
+    Resource1 [label="urn:pulumi:content::webpage::pulumi:providers:pulumi::default"];
+    Resource2 [label="urn:pulumi:content::webpage::pulumi:pulumi:StackReference::bucket"];
+    Resource2 -> Resource0 [color = "#AA6639"];
+    Resource2 -> Resource3 [color = "#246C60", label = "bucket"];
+    Resource4 [label="urn:pulumi:content::webpage::pulumi:providers:aws::default_3_22_0"];
+    Resource3 [label="urn:pulumi:content::webpage::aws:s3/bucketObject:BucketObject::index"];
+    Resource3 -> Resource0 [color = "#AA6639"];
+}
