@@ -20,24 +20,38 @@
     "build": "tsc",
     "clean": "rm -r dist",
     "lint": "eslint . --ext .ts",
-    "test": "echo \"Error: run tests from root\" && exit 1"
+    "test": "PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest"
   },
   "bugs": {
     "url": "https://github.com/allprojects/decentralized-deployments/issues"
   },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "transform": {
+      "^.+\\.(ts|tsx)$": "ts-jest"
+    }
+  },
   "devDependencies": {
+    "@types/jest": "^26.0.20",
     "@types/node": "^14.14.27",
+    "@types/pino": "^6.3.5",
     "@typescript-eslint/eslint-plugin": "^4.15.0",
     "@typescript-eslint/parser": "^4.15.0",
     "eslint": "^7.19.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-prettier": "^3.3.1",
+    "jest": "^26.6.3",
     "prettier": "^2.2.1",
+    "ts-jest": "^26.5.1",
     "typescript": "^4.1.5"
   },
   "dependencies": {
+    "@funkia/hareactive": "^0.4.0",
+    "@funkia/io": "^0.0.5",
     "@pulumi/aws": "^3.28.1",
     "@pulumi/awsx": "^0.24.0",
-    "@pulumi/pulumi": "^2.20.0"
+    "@pulumi/pulumi": "^2.20.0",
+    "pino": "^6.11.1"
   }
 }
