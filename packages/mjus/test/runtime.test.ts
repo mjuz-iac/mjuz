@@ -1,5 +1,16 @@
-import { nextAction } from '../src/runtime';
-import { empty, Future, sample, sinkFuture, sinkStream, toPromise } from '@funkia/hareactive';
+import { Action, loop, nextAction } from '../src/runtime';
+import {
+	Behavior,
+	empty,
+	fromFunction,
+	Future,
+	runNow,
+	sample,
+	sinkFuture,
+	sinkStream,
+	toPromise,
+} from '@funkia/hareactive';
+import { IO, runIO } from '@funkia/io';
 
 describe('runtime', () => {
 	describe('next action', () => {
@@ -63,6 +74,42 @@ describe('runtime', () => {
 
 			const naP = toPromise(sample(sample(na).run(2)).run(4));
 			return expect(naP).resolves.toBe('destroy');
+		});
+	});
+
+	describe('loop', () => {
+		const operations = (action: Action) => (s: string) => IO.of(s + action.slice(0, 3));
+		let remainingActions: Action[] = [];
+		const nextAction = Behavior.of(
+			fromFunction(() => {
+				const action = remainingActions[0];
+				remainingActions = remainingActions.slice(1);
+				return Future.of(action);
+			})
+		);
+
+		test('direct destroy', () => {
+			remainingActions = ['destroy'];
+			const l = loop(() => IO.of('I'), operations, nextAction);
+			return expect(runIO(runNow(sample(l)))).resolves.toBe('Ides');
+		});
+
+		test('direct terminate', () => {
+			remainingActions = ['terminate'];
+			const l = loop(() => IO.of('I'), operations, nextAction);
+			return expect(runIO(runNow(sample(l)))).resolves.toBe('Iter');
+		});
+
+		test('deploy and terminate', () => {
+			remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
+			const l = loop(() => IO.of('I'), operations, nextAction);
+			return expect(runIO(runNow(sample(l)))).resolves.toBe('Idepdepter');
+		});
+
+		test('deploy and destroy', () => {
+			remainingActions = ['deploy', 'deploy', 'destroy', 'deploy'];
+			const l = loop(() => IO.of('I'), operations, nextAction);
+			return expect(runIO(runNow(sample(l)))).resolves.toBe('Idepdepdes');
 		});
 	});
 });
