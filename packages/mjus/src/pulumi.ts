@@ -9,6 +9,7 @@ import {
 	LocalWorkspaceOptions,
 	PulumiFn,
 } from '@pulumi/pulumi/x/automation';
+import { Action } from './runtime';
 
 export const emptyProgram: PulumiFn = async () => {
 	// Empty program
@@ -23,7 +24,7 @@ const newActionLogger = (action: PulumiAction): Logger =>
 export type Stack = {
 	readonly stack: pulumi.Stack;
 	readonly isDeployed: boolean;
-	readonly isTerminated: boolean;
+	readonly isDestroyed: boolean;
 };
 
 const pulumiCreateOrSelectStack = withEffectsP(
@@ -44,7 +45,7 @@ export const getStack = (
 		)
 		.map((stack) => {
 			logger.debug(`Completed getting stack ${stack.name}`);
-			return { stack: stack, isDeployed: false, isTerminated: false };
+			return { stack: stack, isDeployed: false, isDestroyed: false };
 		});
 };
 
@@ -67,7 +68,7 @@ export const deploy = (stack: Stack, targetState: PulumiFn): IO<Stack> => {
 			return {
 				stack: stack.stack,
 				isDeployed: true,
-				isTerminated: false,
+				isDestroyed: false,
 			};
 		});
 };
@@ -77,7 +78,7 @@ const pulumiDestroy = withEffectsP((stack: pulumi.Stack, logger: Logger) =>
 );
 
 export const destroy = (stack: Stack): IO<Stack> => {
-	if (stack.isTerminated) return throwE('Stack terminated already');
+	if (stack.isDestroyed) return throwE('Stack terminated already');
 	const logger = newActionLogger('destroy');
 	return call(() => logger.debug('Destroying stack'))
 		.flatMap(() => pulumiDestroy(stack.stack, logger))
@@ -88,7 +89,20 @@ export const destroy = (stack: Stack): IO<Stack> => {
 			return {
 				stack: stack.stack,
 				isDeployed: false,
-				isTerminated: true,
+				isDestroyed: true,
 			};
 		});
+};
+
+export const operations = (program: PulumiFn) => (
+	action: Action
+): ((stack: Stack) => IO<Stack>) => {
+	switch (action) {
+		case 'deploy':
+			return (stack: Stack) => deploy(stack, program);
+		case 'terminate':
+			return (stack: Stack) => IO.of(stack);
+		case 'destroy':
+			return (stack: Stack) => destroy(stack);
+	}
 };

@@ -20,10 +20,10 @@ describe('pulumi', () => {
 					return {
 						name: stack.stack.name,
 						isDeployed: stack.isDeployed,
-						isTerminated: stack.isTerminated,
+						isDestroyed: stack.isDestroyed,
 					};
 				})
-			).resolves.toEqual({ name: 'testStack', isDeployed: false, isTerminated: false });
+			).resolves.toEqual({ name: 'testStack', isDeployed: false, isDestroyed: false });
 		});
 	});
 
@@ -42,10 +42,10 @@ describe('pulumi', () => {
 					return {
 						name: stack.stack.name,
 						isDeployed: stack.isDeployed,
-						isTerminated: stack.isTerminated,
+						isDestroyed: stack.isDestroyed,
 					};
 				})
-			).resolves.toEqual({ name: 'testStack', isDeployed: false, isTerminated: true });
+			).resolves.toEqual({ name: 'testStack', isDeployed: false, isDestroyed: true });
 		});
 	});
 
@@ -64,10 +64,10 @@ describe('pulumi', () => {
 					return {
 						name: stack.stack.name,
 						isDeployed: stack.isDeployed,
-						isTerminated: stack.isTerminated,
+						isDestroyed: stack.isDestroyed,
 					};
 				})
-			).resolves.toEqual({ name: 'testStack', isDeployed: true, isTerminated: false });
+			).resolves.toEqual({ name: 'testStack', isDeployed: true, isDestroyed: false });
 		});
 	});
 });
