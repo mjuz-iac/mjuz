@@ -61,7 +61,7 @@ export const loop = <S>(
 	initOperation: () => IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: Behavior<Behavior<Future<Action>>>
-): Behavior<IO<S>> => {
+): IO<S> => {
 	const logger = newLogger('loop');
 
 	const recurse = (bufferingNextAction: Behavior<Future<Action>>, state: S): IO<S> =>
@@ -79,12 +79,10 @@ export const loop = <S>(
 				});
 			});
 
-	return nextAction.map((buffering2ndAction: Behavior<Future<Action>>) =>
-		call(() => logger.info('Initializing stack'))
-			.flatMap(initOperation)
-			.flatMap((state) => {
-				logger.info('Completed initializing state');
-				return recurse(buffering2ndAction, state);
-			})
-	);
+	return call(() => logger.info('Initializing stack'))
+		.flatMap(initOperation)
+		.flatMap((state) => {
+			logger.info('Completed initializing state, triggering deploy');
+			return recurse(Behavior.of(Future.of('deploy')), state);
+		});
 };

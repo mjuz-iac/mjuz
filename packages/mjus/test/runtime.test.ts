@@ -4,7 +4,6 @@ import {
 	empty,
 	fromFunction,
 	Future,
-	runNow,
 	sample,
 	sinkFuture,
 	sinkStream,
@@ -91,25 +90,25 @@ describe('runtime', () => {
 		test('direct destroy', () => {
 			remainingActions = ['destroy'];
 			const l = loop(() => IO.of('I'), operations, nextAction);
-			return expect(runIO(runNow(sample(l)))).resolves.toBe('Ides');
+			return expect(runIO(l)).resolves.toBe('Idepdes');
 		});
 
 		test('direct terminate', () => {
 			remainingActions = ['terminate'];
 			const l = loop(() => IO.of('I'), operations, nextAction);
-			return expect(runIO(runNow(sample(l)))).resolves.toBe('Iter');
+			return expect(runIO(l)).resolves.toBe('Idepter');
 		});
 
 		test('deploy and terminate', () => {
 			remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
 			const l = loop(() => IO.of('I'), operations, nextAction);
-			return expect(runIO(runNow(sample(l)))).resolves.toBe('Idepdepter');
+			return expect(runIO(l)).resolves.toBe('Idepdepdepter');
 		});
 
 		test('deploy and destroy', () => {
 			remainingActions = ['deploy', 'deploy', 'destroy', 'deploy'];
 			const l = loop(() => IO.of('I'), operations, nextAction);
-			return expect(runIO(runNow(sample(l)))).resolves.toBe('Idepdepdes');
+			return expect(runIO(l)).resolves.toBe('Idepdepdepdes');
 		});
 	});
 });
