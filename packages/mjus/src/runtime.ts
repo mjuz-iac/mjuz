@@ -1,11 +1,9 @@
 import {
 	Behavior,
-	changes,
 	Future,
 	nextOccurrenceFrom,
 	runNow,
 	sample,
-	stepTo,
 	Stream,
 	toPromise,
 } from '@funkia/hareactive';
@@ -30,25 +28,15 @@ export const nextAction = <T, U, V>(
 	stateChanges: Stream<T>,
 	terminateTrigger: Future<U>,
 	destroyTrigger: Future<V>
-): Behavior<Behavior<Future<Action>>> => {
-	const nextAction = (nextDeploy: Future<T>): Behavior<Action | 'unknown'> =>
-		stepTo('unknown', nextDeploy.mapTo<Action>('deploy'))
-			.flatMap((nextAction) =>
-				stepTo(nextAction, terminateTrigger.mapTo<Action>('terminate'))
-			)
-			.flatMap((nextAction) => stepTo(nextAction, destroyTrigger.mapTo<Action>('destroy')));
-
-	return nextOccurrenceFrom(stateChanges).map((nextDeploy) => {
-		const na = nextAction(nextDeploy);
-		return na.flatMap((maybeAction) =>
-			maybeAction !== 'unknown'
-				? Behavior.of(Future.of(<Action>maybeAction))
-				: nextOccurrenceFrom(
-						<Stream<Action>>changes(na).filter((action) => action !== 'unknown')
-				  )
-		);
-	});
-};
+): Behavior<Behavior<Future<Action>>> =>
+	nextOccurrenceFrom(stateChanges).map((nextDeploy) =>
+		Behavior.of(
+			destroyTrigger
+				.mapTo<Action>('destroy')
+				.combine(terminateTrigger.mapTo('terminate'))
+				.combine(nextDeploy.mapTo('deploy'))
+		)
+	);
 
 /**
  * Reactive main loop.

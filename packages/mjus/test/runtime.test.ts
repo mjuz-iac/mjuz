@@ -1,78 +1,98 @@
-import { Action, loop, nextAction } from '../src/runtime';
-import {
-	Behavior,
-	empty,
-	fromFunction,
-	Future,
-	sample,
-	sinkFuture,
-	sinkStream,
-	toPromise,
-} from '@funkia/hareactive';
+import { Action, loop, nextAction } from '../src';
+import { Behavior, fromFunction, Future, never } from '@funkia/hareactive';
 import { IO, runIO } from '@funkia/io';
+import {
+	assertFutureEqual,
+	testAt,
+	testFuture,
+	testStreamFromObject,
+} from '@funkia/hareactive/testing';
 
 describe('runtime', () => {
 	describe('next action', () => {
-		/**
-		 * Tests not using the nice functional testing features of Hareactive due to bugs in their library...
-		 */
+		const farFuture = testFuture(10, true);
+		const farStream = testStreamFromObject({ 10: true });
 
+		test('deploy before 1st moment', () => {
+			const na = nextAction(testStreamFromObject({ 1: true }), farFuture, farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), never);
+		});
 		test('deploy before 2nd moment', () => {
-			const stateChanges = sinkStream();
-			const na = nextAction(stateChanges, sinkFuture(), sinkFuture());
-
-			const na1 = sample(na).run(2);
-			stateChanges.pushS(3, true);
-			const naP = toPromise(sample(na1).run(4));
-			return expect(naP).resolves.toBe('deploy');
+			const na = nextAction(testStreamFromObject({ 3: true }), farFuture, farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'deploy'));
 		});
-
 		test('deploy after 2nd moment', () => {
-			const stateChanges = sinkStream();
-			const na = nextAction(stateChanges, sinkFuture(), sinkFuture());
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			stateChanges.pushS(5, true);
-			return expect(naP).resolves.toBe('deploy');
+			const na = nextAction(testStreamFromObject({ 5: true }), farFuture, farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(5, 'deploy'));
 		});
 
-		test('terminate', () => {
-			const na = nextAction(empty, Future.of(true), sinkFuture());
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			return expect(naP).resolves.toBe('terminate');
+		test('terminate before 1st moment', () => {
+			const na = nextAction(farStream, testFuture(1, true), farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(1, 'terminate'));
+		});
+		test('terminate before 2nd moment', () => {
+			const na = nextAction(farStream, testFuture(3, true), farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'terminate'));
+		});
+		test('terminate after 2nd moment', () => {
+			const na = nextAction(farStream, testFuture(5, true), farFuture);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(5, 'terminate'));
 		});
 
-		test('destroy', () => {
-			const na = nextAction(empty, sinkFuture(), Future.of(true));
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			return expect(naP).resolves.toBe('destroy');
+		test('destroy before 1st moment', () => {
+			const na = nextAction(farStream, farFuture, testFuture(1, true));
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(1, 'destroy'));
+		});
+		test('destroy before 2nd moment', () => {
+			const na = nextAction(farStream, farFuture, testFuture(3, true));
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'destroy'));
+		});
+		test('destroy after 2nd moment', () => {
+			const na = nextAction(farStream, farFuture, testFuture(5, true));
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(5, 'destroy'));
 		});
 
 		test('terminate supersedes deploy', () => {
-			const stateChanges = sinkStream();
-			const na = nextAction(stateChanges, Future.of(true), sinkFuture());
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			stateChanges.pushS(5, true);
-			return expect(naP).resolves.toBe('terminate');
+			const na = nextAction(
+				testStreamFromObject({ 3: true }),
+				testFuture(3, true),
+				farFuture
+			);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'terminate'));
+		});
+		test('terminate does not supersede deploy', () => {
+			const na = nextAction(
+				testStreamFromObject({ 3: true }),
+				testFuture(4, true),
+				farFuture
+			);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'deploy'));
 		});
 
 		test('destroy supersedes deploy', () => {
-			const stateChanges = sinkStream();
-			const na = nextAction(stateChanges, sinkFuture(), Future.of(true));
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			stateChanges.pushS(5, true);
-			return expect(naP).resolves.toBe('destroy');
+			const na = nextAction(
+				testStreamFromObject({ 3: true }),
+				farFuture,
+				testFuture(3, true)
+			);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'destroy'));
+		});
+		test('destroy does not supersede deploy', () => {
+			const na = nextAction(
+				testStreamFromObject({ 3: true }),
+				farFuture,
+				testFuture(4, true)
+			);
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'deploy'));
 		});
 
 		test('destroy supersedes terminate', () => {
-			const na = nextAction(empty, Future.of(true), Future.of(true));
-
-			const naP = toPromise(sample(sample(na).run(2)).run(4));
-			return expect(naP).resolves.toBe('destroy');
+			const na = nextAction(farStream, testFuture(3, true), testFuture(3, true));
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'destroy'));
+		});
+		test('destroy does not supersede terminate', () => {
+			const na = nextAction(farStream, testFuture(3, true), testFuture(4, true));
+			assertFutureEqual(testAt(4, testAt(2, na)), testFuture(3, 'terminate'));
 		});
 	});
 
