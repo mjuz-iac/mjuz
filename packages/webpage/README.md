@@ -2,9 +2,36 @@
 
 Example of a S3 hosted webpage.
 
+Assumes `ts-node` and `pino-pretty` to be installed:
+
+```
+npm i -g ts-node pino-pretty
+```
+
+## Central µs
+
+Everything in a single stack managed by µs.
+
+### Deploy
+
+Start with empty Pulumi config passphrase and pretty printed logging.
+
+```
+cd src/central-mjus
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l
+```
+
+### Terminate
+
+Stop deployment safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+
+### Terminate
+
+Stop deployment safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+
 ## Central Reference
 
-Everything in a single stack.
+Everything in a single stack managed by Pulumi.
 
 ### Setup/Deploy
 
@@ -33,7 +60,7 @@ pulumi stack rm demo
 
 ## Decentral Reference
 
-Bucket and content are in separate stacks, connceted using Pulumi's stack references.
+Bucket and content are in separate stacks, connected using Pulumi's stack references.
 
 ### Setup/Deploy
 
