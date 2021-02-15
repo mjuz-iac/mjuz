@@ -1,5 +1,5 @@
 import { Action, loop, nextAction } from '../src';
-import { Behavior, fromFunction, Future, never } from '@funkia/hareactive';
+import { fromFunction, Future, getTime, never, tick } from '@funkia/hareactive';
 import { IO, runIO } from '@funkia/io';
 import {
 	assertFutureEqual,
@@ -97,10 +97,18 @@ describe('runtime', () => {
 	});
 
 	describe('loop', () => {
-		const operations = (action: Action) => (s: string) => IO.of(s + action.slice(0, 3));
+		let operationTime = 0;
+
+		const operations = (action: Action) => (s: string) => {
+			tick();
+			operationTime = getTime();
+			return IO.of(s + action.slice(0, 3));
+		};
 		let remainingActions: Action[] = [];
-		const nextAction = Behavior.of(
-			fromFunction(() => {
+		const nextAction = fromFunction((t1) =>
+			fromFunction((t2) => {
+				expect(t1).toBeLessThan(operationTime);
+				expect(t2).toBeGreaterThan(operationTime);
 				const action = remainingActions[0];
 				remainingActions = remainingActions.slice(1);
 				return Future.of(action);

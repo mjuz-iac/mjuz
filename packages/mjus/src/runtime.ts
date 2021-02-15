@@ -1,10 +1,12 @@
 import {
 	Behavior,
+	fromFunction,
 	Future,
 	nextOccurrenceFrom,
 	runNow,
 	sample,
 	Stream,
+	tick,
 	toPromise,
 } from '@funkia/hareactive';
 import { call, callP, IO } from '@funkia/io';
@@ -29,14 +31,15 @@ export const nextAction = <T, U, V>(
 	terminateTrigger: Future<U>,
 	destroyTrigger: Future<V>
 ): Behavior<Behavior<Future<Action>>> =>
-	nextOccurrenceFrom(stateChanges).map((nextDeploy) =>
-		Behavior.of(
+	nextOccurrenceFrom(stateChanges).map((nextDeploy) => {
+		nextDeploy.activate(tick()); // Required to ensure occurrences are buffered before inner behavior is sampled
+		return fromFunction(() =>
 			destroyTrigger
 				.mapTo<Action>('destroy')
 				.combine(terminateTrigger.mapTo('terminate'))
 				.combine(nextDeploy.mapTo('deploy'))
-		)
-	);
+		);
+	});
 
 /**
  * Reactive main loop.
