@@ -22,6 +22,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "lint": "eslint . --ext .ts",
+    "postinstall": "patch-package",
     "prepublish": "npm run clean && npm run build",
     "test-unit": "jest --testMatch '**/*.test.ts'",
     "test-integration": "PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand --testMatch '**/*.itest.ts'",
@@ -31,7 +32,9 @@
     "url": "https://github.com/allprojects/decentralized-deployments/issues"
   },
   "jest": {
-    "testMatch": ["**/*test.ts"],
+    "testMatch": [
+      "**/*test.ts"
+    ],
     "testEnvironment": "node",
     "testTimeout": 30000,
     "transform": {
@@ -59,6 +62,7 @@
     "@pulumi/aws": "^3.28.1",
     "@pulumi/awsx": "^0.24.0",
     "@pulumi/pulumi": "^2.20.0",
+    "patch-package": "^6.2.2",
     "pino": "^6.11.1"
   }
 }
