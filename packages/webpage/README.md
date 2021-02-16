@@ -10,7 +10,7 @@ npm i -g ts-node pino-pretty
 
 ## Central µs
 
-Everything in a single stack managed by µs.
+Everything in a single stack managed by µs. Page content is reactively updated every 20 seconds.
 
 ### Deploy
 
@@ -25,7 +25,7 @@ PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -
 
 Stop deployment safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
 
-### Terminate
+### Destroy
 
 Stop deployment safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
 
@@ -58,9 +58,67 @@ pulumi destroy
 pulumi stack rm demo
 ```
 
+## Decentral µs
+
+Bucket and content are in separate stacks managed by separate µs programs. The stacks are connected using an offer and a
+wish. The deployment order coordination is automated, the stacks can be safely deployed and destroyed in any order.
+
+### Deploy
+
+Start with empty Pulumi config passphrase and pretty printed logging.
+
+```
+cd src/decentral-mjus
+
+# Start bucket stack
+PULUMI_CONFIG_PASSPHRASE= ts-node bucket.ts | pino-pretty -c -l -i pid,hostname -H
+
+# Start content stack (in parallel to the bucket, e.g., in another terminal)
+PULUMI_CONFIG_PASSPHRASE= ts-node content.ts | pino-pretty -c -l -i pid,hostname -H
+```
+
+### Terminate
+
+Stop deployment safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+
+### Destroy
+
+Stop deployment safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+
+## Decentral µs Stack Reference
+
+Bucket and content are in separate stacks managed by separate µs programs. The stacks are connected using Pulumi's stack
+references (like in Decentral Reference) and *not* with an offer and a wish (like in Decentral µs). This requires manual
+coordination: The bucket stack must be deployed before the content stack, and the content stack must be destroyed before
+the bucket stack.
+
+### Deploy
+
+Start with empty Pulumi config passphrase and pretty printed logging.
+
+```
+cd src/decentral-mjus-stackref
+
+# Start bucket stack
+PULUMI_CONFIG_PASSPHRASE= ts-node bucket.ts | pino-pretty -c -l -i pid,hostname -H
+
+# Start content stack (in parallel to the bucket, e.g., in another terminal)
+PULUMI_CONFIG_PASSPHRASE= ts-node content.ts | pino-pretty -c -l -i pid,hostname -H
+```
+
+### Terminate
+
+Stop deployments safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+
+### Destroy
+
+Stop deployments safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+
 ## Decentral Reference
 
-Bucket and content are in separate stacks, connected using Pulumi's stack references.
+Bucket and content are in separate stacks, connected using Pulumi's stack references. This requires manual coordination:
+The bucket stack must be deployed before the content stack, and the content stack must be destroyed before  the bucket
+stack.
 
 ### Setup/Deploy
 
