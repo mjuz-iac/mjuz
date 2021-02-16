@@ -1,8 +1,12 @@
 {
   "name": "root",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "postinstall": "lerna bootstrap --hoist && patch-package",
+    "clean": "lerna clean -y"
+  },
   "devDependencies": {
-    "lerna": "^3.22.1"
+    "lerna": "^3.22.1",
+    "patch-package": "^6.2.2"
   }
 }
