@@ -29,10 +29,6 @@ setInterval(
 );
 
 const program = (state: State): PulumiFn => async () => {
-	/**
-	 * Based on inline program ts pulumi automation API example: https://github.com/pulumi/automation-api-examples/tree/main/nodejs/inlineProgram-ts
-	 */
-
 	// Create a bucket and expose a website index document
 	const bucket = new aws.s3.Bucket('website', {
 		website: {

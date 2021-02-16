@@ -53,7 +53,7 @@ export const getStack = (
 const pulumiUp = withEffectsP((stack: pulumi.Stack, program: PulumiFn, logger: Logger) =>
 	stack.up({
 		program: program,
-		onOutput: (m) => logger.debug(m),
+		onOutput: (m) => logger.debug(m.replace(/[\n\r]/g, '')),
 	})
 );
 
@@ -75,7 +75,7 @@ export const deploy = (stack: Stack, targetState: PulumiFn): IO<Stack> => {
 };
 
 const pulumiDestroy = withEffectsP((stack: pulumi.Stack, logger: Logger) =>
-	stack.destroy({ onOutput: (m) => logger.debug(m) })
+	stack.destroy({ onOutput: (m) => logger.debug(m.replace(/[\n\r]/g, '')) })
 );
 
 export const destroy = (stack: Stack): IO<Stack> => {

@@ -1,9 +1,6 @@
 import * as pulumi from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
 
-/**
- * Based on inline program ts pulumi automation API example: https://github.com/pulumi/automation-api-examples/tree/main/nodejs/inlineProgram-ts
- */
 const config = new pulumi.Config();
 const bucketStackName = config.require('bucketStack');
 const bucketStack = new pulumi.StackReference(bucketStackName);

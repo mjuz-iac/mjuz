@@ -1,8 +1,8 @@
-# `webpage`
+# WebPage Case Study
 
-Example of a S3 hosted webpage.
+Example of a S3 hosted webpage. Based on inline program ts pulumi automation API example: https://github.com/pulumi/automation-api-examples/tree/main/nodejs/inlineProgram-ts
 
-Assumes `ts-node` and `pino-pretty` to be installed:
+In the following, we assume `ts-node` and `pino-pretty` are installed:
 
 ```
 npm i -g ts-node pino-pretty
@@ -18,7 +18,7 @@ Start with empty Pulumi config passphrase and pretty printed logging.
 
 ```
 cd src/central-mjus
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
 ### Terminate
