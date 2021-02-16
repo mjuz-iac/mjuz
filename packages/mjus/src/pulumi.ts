@@ -10,6 +10,7 @@ import {
 	PulumiFn,
 } from '@pulumi/pulumi/x/automation';
 import { Action } from './runtime';
+import { Behavior, runNow, sample } from '@funkia/hareactive';
 
 export const emptyProgram: PulumiFn = async () => {
 	// Empty program
@@ -94,12 +95,12 @@ export const destroy = (stack: Stack): IO<Stack> => {
 		});
 };
 
-export const operations = (program: PulumiFn) => (
+export const operations = (program: Behavior<PulumiFn>) => (
 	action: Action
 ): ((stack: Stack) => IO<Stack>) => {
 	switch (action) {
 		case 'deploy':
-			return (stack: Stack) => deploy(stack, program);
+			return (stack: Stack) => deploy(stack, runNow(sample(program)));
 		case 'terminate':
 			return (stack: Stack) => IO.of(stack);
 		case 'destroy':

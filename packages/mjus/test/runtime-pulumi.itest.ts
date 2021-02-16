@@ -1,7 +1,6 @@
-import { Action, loop, nextAction } from '../src/runtime';
+import { Action, emptyProgram, getStack, loop, nextAction, operations, Stack } from '../src';
 import { runIO } from '@funkia/io';
-import { empty, sinkFuture, sinkStream } from '@funkia/hareactive';
-import { emptyProgram, getStack, operations, Stack } from '../src/pulumi';
+import { Behavior, empty, sinkFuture, sinkStream } from '@funkia/hareactive';
 import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
 
 describe('integration', () => {
@@ -34,7 +33,7 @@ describe('integration', () => {
 			(action: Action) => {
 				ops++;
 				if (ops === 1) terminate.resolve(true);
-				return operations(emptyProgram)(action);
+				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(empty, terminate, sinkFuture())
 		);
@@ -53,7 +52,7 @@ describe('integration', () => {
 				ops++;
 				if (ops < 3) stateChanges.push(true);
 				if (ops === 3) terminate.resolve(true);
-				return operations(emptyProgram)(action);
+				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(stateChanges, terminate, sinkFuture())
 		);
@@ -70,7 +69,7 @@ describe('integration', () => {
 			(action: Action) => {
 				ops++;
 				if (ops === 1) destroy.resolve(true);
-				return operations(emptyProgram)(action);
+				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(empty, sinkFuture(), destroy)
 		);
@@ -89,7 +88,7 @@ describe('integration', () => {
 				ops++;
 				if (ops < 3) stateChanges.push(true);
 				if (ops === 3) destroy.resolve(true);
-				return operations(emptyProgram)(action);
+				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(stateChanges, sinkFuture(), destroy)
 		);
