@@ -25,14 +25,15 @@
     "prepublish": "npm run clean && npm run build",
     "test-unit": "jest --testMatch '**/*.test.ts'",
     "test-integration": "PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand --testMatch '**/*.itest.ts'",
-    "test": "PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand"
+    "test-integration-manual": "find . -name \\*.mtest.ts -type f -print0 | PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 xargs -n 1 -0 ts-node",
+    "test": "npm run test-integration-manual && PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand"
   },
   "bugs": {
     "url": "https://github.com/allprojects/decentralized-deployments/issues"
   },
   "jest": {
     "testMatch": [
-      "**/*test.ts"
+      "**/*[^m]test.ts"
     ],
     "testEnvironment": "node",
     "testTimeout": 30000,
@@ -57,6 +58,7 @@
     "pino": "6.11.1",
     "prettier": "2.2.1",
     "ts-jest": "26.5.1",
+    "ts-node": "9.1.1",
     "typescript": "4.1.5"
   },
   "dependencies": {
