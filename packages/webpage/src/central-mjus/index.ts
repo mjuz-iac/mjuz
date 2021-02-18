@@ -1,21 +1,16 @@
 import {
 	emptyProgram,
 	getStack,
-	keepAlive,
-	newLogger,
 	nextAction,
 	operations,
-	reactionLoop,
+	runDeployment,
 	sigint,
 	sigterm,
 } from '@mjus/core';
 import { at, changes, sinkBehavior } from '@funkia/hareactive';
-import { runIO } from '@funkia/io';
 import * as aws from '@pulumi/aws';
 import { PulumiFn } from '@pulumi/pulumi/x/automation';
 import { isDeepStrictEqual } from 'util';
-
-const logger = newLogger('deployment');
 
 type State = { counter: number };
 const programState = sinkBehavior<State>({ counter: 0 });
@@ -93,19 +88,8 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-const deployment = reactionLoop(
+runDeployment(
 	initStack,
 	operations(programState.map(program)),
 	nextAction(changes(programState, isDeepStrictEqual), sigint(), sigterm())
 );
-
-runIO(deployment)
-	.catch((err) => {
-		logger.error(err, 'Deployment error');
-		process.exit(1);
-	})
-	.finally(() => {
-		logger.info('Deployment terminated');
-		process.exit(0);
-	});
-keepAlive();

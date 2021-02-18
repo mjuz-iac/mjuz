@@ -1,19 +1,14 @@
 import {
 	emptyProgram,
 	getStack,
-	keepAlive,
-	loop,
-	newLogger,
 	nextAction,
 	operations,
+	runDeployment,
 	sigint,
 	sigterm,
 } from '@mjus/core';
 import { Behavior, empty } from '@funkia/hareactive';
-import { runIO } from '@funkia/io';
 import * as aws from '@pulumi/aws';
-
-const logger = newLogger('deployment');
 
 const program = async () => {
 	// Create a bucket and expose a website index document
@@ -62,19 +57,4 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-const deployment = loop(
-	initStack,
-	operations(Behavior.of(program)),
-	nextAction(empty, sigint(), sigterm())
-);
-
-runIO(deployment)
-	.catch((err) => {
-		logger.error(err, 'Deployment error');
-		process.exit(1);
-	})
-	.finally(() => {
-		logger.info('Deployment terminated');
-		process.exit(0);
-	});
-keepAlive();
+runDeployment(initStack, operations(Behavior.of(program)), nextAction(empty, sigint(), sigterm()));

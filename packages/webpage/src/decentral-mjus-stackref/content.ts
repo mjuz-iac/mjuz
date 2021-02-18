@@ -1,20 +1,15 @@
 import {
 	emptyProgram,
 	getStack,
-	keepAlive,
-	loop,
-	newLogger,
 	nextAction,
 	operations,
+	runDeployment,
 	sigint,
 	sigterm,
 } from '@mjus/core';
 import { Behavior, empty } from '@funkia/hareactive';
-import { runIO } from '@funkia/io';
 import * as aws from '@pulumi/aws';
 import * as pulumi from '@pulumi/pulumi';
-
-const logger = newLogger('deployment');
 
 const program = async () => {
 	const config = new pulumi.Config();
@@ -55,19 +50,4 @@ const initStack = () =>
 		}
 	);
 
-const deployment = loop(
-	initStack,
-	operations(Behavior.of(program)),
-	nextAction(empty, sigint(), sigterm())
-);
-
-runIO(deployment)
-	.catch((err) => {
-		logger.error(err, 'Deployment error');
-		process.exit(1);
-	})
-	.finally(() => {
-		logger.info('Deployment terminated');
-		process.exit(0);
-	});
-keepAlive();
+runDeployment(initStack, operations(Behavior.of(program)), nextAction(empty, sigint(), sigterm()));
