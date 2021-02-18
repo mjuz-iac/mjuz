@@ -108,3 +108,7 @@ dist
 .DS_Store
 
 Pulumi.*.yaml
+
+packages/mjus/Pulumi.yaml
+packages/webpage/src/decentral-mjus/bucket/Pulumi.yaml
+packages/webpage/src/decentral-mjus/content/Pulumi.yaml

@@ -67,14 +67,18 @@ wish. The deployment order coordination is automated, the stacks can be safely d
 
 Start with empty Pulumi config passphrase and pretty printed logging.
 
+#### Bucket
+
 ```
-cd src/decentral-mjus
+cd src/decentral-mjus/bucket
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+```
 
-# Start bucket stack
-PULUMI_CONFIG_PASSPHRASE= ts-node bucket.ts | pino-pretty -c -l -i pid,hostname -H
+#### Content
 
-# Start content stack (in parallel to the bucket, e.g., in another terminal)
-PULUMI_CONFIG_PASSPHRASE= ts-node content.ts | pino-pretty -c -l -i pid,hostname -H
+```
+cd src/decentral-mjus/content
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
 ### Terminate
@@ -100,10 +104,10 @@ Start with empty Pulumi config passphrase and pretty printed logging.
 cd src/decentral-mjus-stackref
 
 # Start bucket stack
-PULUMI_CONFIG_PASSPHRASE= ts-node bucket.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 
 # Start content stack (in parallel to the bucket, e.g., in another terminal)
-PULUMI_CONFIG_PASSPHRASE= ts-node content.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
 ### Terminate
