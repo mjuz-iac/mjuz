@@ -8,7 +8,7 @@ import {
 	testStreamFromObject,
 } from '@funkia/hareactive/testing';
 
-describe('runtime', () => {
+describe('reaction runtime', () => {
 	describe('next action', () => {
 		const farFuture = testFuture(10, true);
 		const farStream = testStreamFromObject({ 10: true });

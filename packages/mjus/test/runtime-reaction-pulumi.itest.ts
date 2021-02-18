@@ -11,7 +11,7 @@ import { runIO } from '@funkia/io';
 import { Behavior, empty, sinkFuture, sinkStream } from '@funkia/hareactive';
 import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
 
-describe('integration', () => {
+describe('reaction runtime and pulumi integration', () => {
 	const initOperation = () =>
 		getStack({
 			stackName: 'testStack',

@@ -53,7 +53,7 @@ export const reactionLoop = <S>(
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: Behavior<Behavior<Future<Action>>>
 ): IO<S> => {
-	const logger = newLogger('loop');
+	const logger = newLogger('reaction loop');
 
 	const recurse = (bufferingNextAction: Behavior<Future<Action>>, state: S): IO<S> =>
 		call(() => logger.info(`Waiting for next action`))
