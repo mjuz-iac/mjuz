@@ -8,18 +8,17 @@ import { WrappedInputs, WrappedOutputs } from '../type-utils';
 type RemoteConnectionInputs = {
 	name: string;
 };
-type RemoteConnectionOutputs = RemoteConnectionInputs;
 
 const remoteConnectionProvider: dynamic.ResourceProvider = {
 	async create(
 		inputs: RemoteConnectionInputs
-	): Promise<dynamic.CreateResult & { outs: RemoteConnectionOutputs }> {
+	): Promise<dynamic.CreateResult & { outs: RemoteConnectionInputs }> {
 		return { id: inputs.name, outs: inputs };
 	},
 };
 
 export type RemoteConnectionArgs = WrappedInputs<Omit<RemoteConnectionInputs, 'name'>>;
-type RemoteConnectionProps = Readonly<WrappedOutputs<Omit<RemoteConnectionOutputs, 'name'>>>;
+type RemoteConnectionProps = Readonly<WrappedOutputs<Omit<RemoteConnectionInputs, 'name'>>>;
 export class RemoteConnection extends dynamic.Resource implements RemoteConnectionProps {
 	constructor(
 		public readonly name: string,

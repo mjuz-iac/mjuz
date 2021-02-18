@@ -27,7 +27,7 @@ export class Wish<O> extends dynamic.Resource implements WishProps<O> {
 		argsOrOfferName: WishArgs | string,
 		opts?: CustomResourceOptions
 	) {
-		const [name, args]: [string, WrappedInputs<WishInputs<null>> | undefined] =
+		const [name, args]: [string, WrappedInputs<WishInputs<unknown>> | undefined] =
 			typeof nameOrTarget === 'string' && typeof argsOrOfferName !== 'string'
 				? [nameOrTarget, { ...argsOrOfferName, value: null }]
 				: nameOrTarget !== 'string' && typeof argsOrOfferName === 'string'
