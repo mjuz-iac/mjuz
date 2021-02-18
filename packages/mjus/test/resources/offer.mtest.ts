@@ -1,4 +1,4 @@
-import { Offer, Remote } from '../../src';
+import { Offer, RemoteConnection } from '../../src';
 import { baseResourceTest, runTests } from './resource-mtest-utils';
 
 /**
@@ -11,7 +11,7 @@ runTests(
 	baseResourceTest(
 		'void offer both constructors',
 		async () => {
-			const r = new Remote('testRemote', {});
+			const r = new RemoteConnection('testRemote', {});
 			const o1 = new Offer(r, 'testOffer', undefined);
 			const o2 = new Offer('directlyNamedTestOffer', {
 				beneficiary: r,

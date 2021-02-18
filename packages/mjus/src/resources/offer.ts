@@ -1,8 +1,8 @@
 import { CustomResourceOptions, dynamic, Input, Output } from '@pulumi/pulumi';
-import { Remote, WrappedInputs, WrappedOutputs } from '..';
+import { RemoteConnection, WrappedInputs, WrappedOutputs } from '..';
 
 type OfferInputs<O> = {
-	beneficiary: Remote;
+	beneficiary: RemoteConnection;
 	offerName: string;
 	offer: O;
 };
@@ -20,32 +20,32 @@ type OfferArgs<O> = WrappedInputs<OfferInputs<O>>;
 type OfferProps<O> = Readonly<WrappedOutputs<OfferOutputs<O>>>;
 export class Offer<O> extends dynamic.Resource implements OfferProps<O> {
 	constructor(
-		beneficiary: Input<Remote>,
+		beneficiary: Input<RemoteConnection>,
 		offerName: string,
 		offer: Input<O>,
 		opts?: CustomResourceOptions
 	);
 	constructor(name: string, props: OfferArgs<O>, opts?: CustomResourceOptions);
 	constructor(
-		nameOrBeneficiary: string | Input<Remote>,
-		propsOrOfferName: OfferArgs<O> | string,
+		nameOrBeneficiary: string | Input<RemoteConnection>,
+		argsOrOfferName: OfferArgs<O> | string,
 		optsOrOffer: CustomResourceOptions | Input<O>,
 		opts?: CustomResourceOptions
 	) {
-		if (typeof nameOrBeneficiary === 'string' && typeof propsOrOfferName !== 'string')
+		if (typeof nameOrBeneficiary === 'string' && typeof argsOrOfferName !== 'string')
 			super(
 				new OfferProvider<O>(),
 				nameOrBeneficiary,
-				propsOrOfferName,
+				argsOrOfferName,
 				<CustomResourceOptions>optsOrOffer
 			);
-		else if (typeof nameOrBeneficiary !== 'string' && typeof propsOrOfferName === 'string')
+		else if (typeof nameOrBeneficiary !== 'string' && typeof argsOrOfferName === 'string')
 			super(
 				new OfferProvider<O>(),
-				`${(<Remote>nameOrBeneficiary).name}:${propsOrOfferName}`,
+				`${(<RemoteConnection>nameOrBeneficiary).name}:${argsOrOfferName}`,
 				{
 					beneficiary: nameOrBeneficiary,
-					offerName: propsOrOfferName,
+					offerName: argsOrOfferName,
 					offer: optsOrOffer,
 				},
 				opts
@@ -53,7 +53,7 @@ export class Offer<O> extends dynamic.Resource implements OfferProps<O> {
 		else throw new Error('Unsupported offer configuration');
 	}
 
-	public readonly beneficiary!: Output<Remote>;
+	public readonly beneficiary!: Output<RemoteConnection>;
 	public readonly offerName!: Output<string>;
 	public readonly offer!: Output<O>;
 }
