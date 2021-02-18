@@ -10,7 +10,7 @@
     "test": "test"
   },
   "files": [
-    "dist"
+    "dist/src"
   ],
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -19,8 +19,9 @@
     "url": "git+https://github.com/allprojects/decentralized-deployments.git"
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "rm -rf dist",
+    "build": "npm run build-protos && tsc",
+    "build-protos": "grpc_tools_node_protoc --plugin=proto-gen-ts=./node_modules/.bin/protoc-gen-ts --ts_out=grpc_js:src --js_out=import_style=commonjs,binary:src --grpc_out=grpc_js:src protos/*.proto && mkdir -p dist/src && cp -r src/protos dist/src",    
+    "clean": "rm -rf dist src/protos",
     "lint": "eslint . --ext .ts",
     "prepublish": "npm run clean && npm run build",
     "test-unit": "jest --testMatch '**/*.test.ts'",
@@ -46,6 +47,7 @@
     "@funkia/hareactive": "0.4.0",
     "@funkia/io": "0.0.5",
     "@pulumi/pulumi": "2.20.0",
+    "@types/google-protobuf": "3.7.4",
     "@types/jest": "26.0.20",
     "@types/node": "14.14.28",
     "@types/pino": "6.3.5",
@@ -54,6 +56,8 @@
     "eslint": "7.20.0",
     "eslint-config-prettier": "7.2.0",
     "eslint-plugin-prettier": "3.3.1",
+    "grpc-tools": "1.10.0",
+    "grpc_tools_node_protoc_ts": "5.1.1",
     "jest": "26.6.3",
     "pino": "6.11.1",
     "prettier": "2.2.1",
@@ -66,6 +70,7 @@
   "peerDependencies": {
     "@funkia/hareactive": "0.4.0",
     "@funkia/io": "0.0.5",
+    "@grpc/grpc-js": "1.2.8",
     "@pulumi/pulumi": "2.20.0",
     "pino": "6.11.1"
   }
