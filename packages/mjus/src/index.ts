@@ -1,5 +1,5 @@
 export * from './logging';
-export * from './runtime';
+export * from './runtime-reaction';
 export * from './pulumi';
 export * from './type-utils';
 export * from './utils';

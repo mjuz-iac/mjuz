@@ -2,11 +2,11 @@ import {
 	emptyProgram,
 	getStack,
 	keepAlive,
-	loop,
 	newLogger,
 	nextAction,
 	Offer,
 	operations,
+	reactionLoop,
 	RemoteConnection,
 	sigint,
 	sigterm,
@@ -66,7 +66,7 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-const deployment = loop(
+const deployment = reactionLoop(
 	initStack,
 	operations(Behavior.of(program)),
 	nextAction(empty, sigint(), sigterm())

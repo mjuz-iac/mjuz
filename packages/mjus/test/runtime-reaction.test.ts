@@ -1,4 +1,4 @@
-import { Action, loop, nextAction } from '../src';
+import { Action, reactionLoop, nextAction } from '../src';
 import { fromFunction, Future, getTime, never, tick } from '@funkia/hareactive';
 import { IO, runIO } from '@funkia/io';
 import {
@@ -117,25 +117,25 @@ describe('runtime', () => {
 
 		test('direct destroy', () => {
 			remainingActions = ['destroy'];
-			const l = loop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
 			return expect(runIO(l)).resolves.toBe('Idepdes');
 		});
 
 		test('direct terminate', () => {
 			remainingActions = ['terminate'];
-			const l = loop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
 			return expect(runIO(l)).resolves.toBe('Idepter');
 		});
 
 		test('deploy and terminate', () => {
 			remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
-			const l = loop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
 			return expect(runIO(l)).resolves.toBe('Idepdepdepter');
 		});
 
 		test('deploy and destroy', () => {
 			remainingActions = ['deploy', 'deploy', 'destroy', 'deploy'];
-			const l = loop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
 			return expect(runIO(l)).resolves.toBe('Idepdepdepdes');
 		});
 	});

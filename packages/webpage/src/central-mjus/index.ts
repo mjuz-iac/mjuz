@@ -2,10 +2,10 @@ import {
 	emptyProgram,
 	getStack,
 	keepAlive,
-	loop,
 	newLogger,
 	nextAction,
 	operations,
+	reactionLoop,
 	sigint,
 	sigterm,
 } from '@mjus/core';
@@ -93,7 +93,7 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-const deployment = loop(
+const deployment = reactionLoop(
 	initStack,
 	operations(programState.map(program)),
 	nextAction(changes(programState, isDeepStrictEqual), sigint(), sigterm())

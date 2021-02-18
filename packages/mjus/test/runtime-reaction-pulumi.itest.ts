@@ -1,4 +1,12 @@
-import { Action, emptyProgram, getStack, loop, nextAction, operations, Stack } from '../src';
+import {
+	Action,
+	emptyProgram,
+	getStack,
+	reactionLoop,
+	nextAction,
+	operations,
+	Stack,
+} from '../src';
 import { runIO } from '@funkia/io';
 import { Behavior, empty, sinkFuture, sinkStream } from '@funkia/hareactive';
 import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
@@ -28,7 +36,7 @@ describe('integration', () => {
 	test('init and terminate', () => {
 		let ops = 0;
 		const terminate = sinkFuture();
-		const l = loop<Stack>(
+		const l = reactionLoop<Stack>(
 			initOperation,
 			(action: Action) => {
 				ops++;
@@ -46,7 +54,7 @@ describe('integration', () => {
 		let ops = 0;
 		const stateChanges = sinkStream();
 		const terminate = sinkFuture();
-		const l = loop<Stack>(
+		const l = reactionLoop<Stack>(
 			initOperation,
 			(action: Action) => {
 				ops++;
@@ -64,7 +72,7 @@ describe('integration', () => {
 	test('init and destroy', () => {
 		let ops = 0;
 		const destroy = sinkFuture();
-		const l = loop<Stack>(
+		const l = reactionLoop<Stack>(
 			initOperation,
 			(action: Action) => {
 				ops++;
@@ -82,7 +90,7 @@ describe('integration', () => {
 		let ops = 0;
 		const stateChanges = sinkStream();
 		const destroy = sinkFuture();
-		const l = loop<Stack>(
+		const l = reactionLoop<Stack>(
 			initOperation,
 			(action: Action) => {
 				ops++;

@@ -48,7 +48,7 @@ export const nextAction = <T, U, V>(
  * @param nextAction Evaluates subsequent actions. First moment is sampled when current action is started, second moment
  * is sampled when current action completed. Future is expected to resolve after the second moment.
  */
-export const loop = <S>(
+export const reactionLoop = <S>(
 	initOperation: () => IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: Behavior<Behavior<Future<Action>>>

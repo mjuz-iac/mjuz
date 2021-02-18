@@ -9,7 +9,7 @@ import {
 	LocalWorkspaceOptions,
 	PulumiFn,
 } from '@pulumi/pulumi/x/automation';
-import { Action } from './runtime';
+import { Action } from '.';
 import { Behavior, runNow, sample } from '@funkia/hareactive';
 
 export const emptyProgram: PulumiFn = async () => {
