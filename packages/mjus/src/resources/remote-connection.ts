@@ -1,7 +1,7 @@
-import { CustomResourceOptions, dynamic, Output } from '@pulumi/pulumi';
-import { Remote } from '@mjus/grpc-protos';
+import { CustomResourceOptions, dynamic, ID, Output } from '@pulumi/pulumi';
+import * as rpc from '@mjus/grpc-protos';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
-import { createRemote } from '../runtime-offers';
+import { createRemote, deleteRemote } from '../runtime-offers';
 
 /**
  * Name and id of `RemoteConnection resources equal.
@@ -25,7 +25,7 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 		inputs: RemoteConnectionInputs
 	): Promise<dynamic.CreateResult & { outs: RemoteConnectionInputs }> {
 		try {
-			const remote = new Remote()
+			const remote = new rpc.Remote()
 				.setId(inputs.name)
 				.setHost(inputs.host)
 				.setPort(inputs.port);
@@ -35,6 +35,11 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 		} catch (e) {
 			return { id: inputs.name, outs: { ...inputs, error: e.message } };
 		}
+	},
+
+	async delete(id: ID): Promise<void> {
+		const remote = new rpc.Remote().setId(id);
+		await deleteRemote(remote);
 	},
 };
 

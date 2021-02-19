@@ -1,5 +1,5 @@
 import { LocalWorkspace, PulumiFn, Stack, UpResult } from '@pulumi/pulumi/x/automation';
-import { emptyProgram, startRemotesService } from '../../src';
+import { emptyProgram, startResourcesService } from '../../src';
 
 /* eslint-disable no-console */
 export const stack = (): Promise<Stack> =>
@@ -27,8 +27,8 @@ export const baseResourceTest = (
 	correctUpResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void
 ): Promise<void> => {
 	console.info('Running test: ' + testName);
-	return startRemotesService()
-		.then((stopRemoteService) =>
+	return startResourcesService()
+		.then((stopResourcesService) =>
 			stack()
 				.then((stack) => stack.up({ program: program }))
 				.then(
@@ -38,7 +38,7 @@ export const baseResourceTest = (
 						)
 				)
 				.then(cleanupStack)
-				.then(() => stopRemoteService())
+				.then(() => stopResourcesService())
 		)
 		.then(() => console.info('Completed test: ' + testName));
 };

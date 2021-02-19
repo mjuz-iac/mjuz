@@ -1,10 +1,10 @@
 import { Remote } from '@mjus/grpc-protos';
-import { createRemote, deleteRemote, startRemotesService } from '../src';
+import { createRemote, deleteRemote, startResourcesService } from '../src';
 
 describe('offers runtime', () => {
 	test('remotes service start, create, delete and stop', () =>
 		expect(
-			startRemotesService().then((stop) =>
+			startResourcesService().then((stop) =>
 				createRemote(new Remote())
 					.then(() => deleteRemote(new Remote()))
 					.then(() => stop())
