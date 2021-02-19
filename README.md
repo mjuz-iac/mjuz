@@ -49,3 +49,12 @@ More details on this issue: https://github.com/pulumi/pulumi/issues/5578
 This is required for dynamic resources (as used by µs) and more.
 The current workaround is not to use jest for such integration tests.
 More details on this issue: https://github.com/pulumi/pulumi/issues/3799
+
+## GRPC fail in dynmiac resource
+
+The Pulumi resource serialization breaks generated gRPC code.
+To solve this issue, the generated gRPC source is outsourced to `@mjus/grpc-protos`
+(because Pulumi does not serialize external packages but loads them directly).
+However, Pulumi serializes external package, if it is not plainly installed to node_modules, but only symlinked.
+Thus, for development, `@mjus/grpc-protos` must be copied into `@mjus/core`'s dependencies and cannot only be linked.
+This is implemented in `npm install` in the repo root.
