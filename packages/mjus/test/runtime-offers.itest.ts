@@ -1,5 +1,5 @@
+import { Remote } from '@mjus/grpc-protos';
 import { createRemote, deleteRemote, startRemotesService } from '../src';
-import { Remote } from '../src/protos/remotes_pb';
 
 describe('offers runtime', () => {
 	test('remotes service start, create, delete and stop', () =>

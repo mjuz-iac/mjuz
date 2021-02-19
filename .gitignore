@@ -113,6 +113,3 @@ Pulumi.*.yaml
 packages/mjus/Pulumi.yaml
 packages/webpage/src/decentral-mjus/bucket/Pulumi.yaml
 packages/webpage/src/decentral-mjus/content/Pulumi.yaml
-
-# Protos generated during build
-packages/mjus/src/protos/

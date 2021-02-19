@@ -1,9 +1,8 @@
 import * as grpc from '@grpc/grpc-js';
 import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
-import { IRemotesServer, RemotesClient, RemotesService } from './protos/remotes_grpc_pb';
-import { Remote } from './protos/remotes_pb';
 import { newLogger } from '.';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
+import { IRemotesServer, Remote, RemotesClient, RemotesService } from '@mjus/grpc-protos';
 
 const REMOTES_SERVICE_PORT = '127.0.0.1:19951';
 

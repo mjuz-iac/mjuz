@@ -1,0 +1,40 @@
+{
+  "name": "@mjus/grpc-protos",
+  "version": "0.0.0",
+  "description": "µs gRPC Protocol Buffer Descriptions",
+  "author": "Daniel Sokolowski <github@d.sokolowski.org>",
+  "homepage": "https://github.com/allprojects/decentralized-deployments#read",
+  "license": "Apache-2.0",
+  "directories": {
+    "dist": "dist"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allprojects/decentralized-deployments.git"
+  },
+  "scripts": {
+    "build": "npm run build-protos && npm run build-index",
+    "build-index": "mkdir -p dist &&  find dist -name \\*.js -type f | xargs -n 1 -I{} basename {} .js | xargs -n 1 -I{} echo \"export * from './{}';\" > dist/index.ts && tsc",
+    "build-protos": "mkdir -p dist && grpc_tools_node_protoc --plugin=proto-gen-ts=./node_modules/.bin/protoc-gen-ts --ts_out=grpc_js:dist --js_out=import_style=commonjs:dist --grpc_out=grpc_js:dist -I src src/*.proto",
+    "clean": "rm -rf dist",
+    "prepublish": "npm run clean && npm run build"
+  },
+  "bugs": {
+    "url": "https://github.com/allprojects/decentralized-deployments/issues"
+  },
+  "devDependencies": {
+    "@types/google-protobuf": "3.7.4",
+    "grpc_tools_node_protoc_ts": "5.1.1",
+    "grpc-tools": "1.10.0",
+    "typescript": "4.1.5"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@grpc/grpc-js": "1.2.8"
+  }
+}
