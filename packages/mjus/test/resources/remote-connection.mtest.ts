@@ -18,8 +18,7 @@ runTests(
 			console.log('Output:');
 			console.log(JSON.stringify(upResult.outputs));
 			JSON.stringify(upResult.outputs).match(
-				'{"r":{"value":{"id":"testRemote","name":"testRemote","urn":"urn:pulumi:testStack::testProject::p' +
-					'ulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}'
+				'{"r":{"value":{"error":null,"host":"127.0.0.1","id":"testRemote","name":"testRemote","port":19952,"urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}'
 			)
 				? resolve()
 				: reject('remote connection: unexpected remote connection');
