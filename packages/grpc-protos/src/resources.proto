@@ -1,0 +1,50 @@
+syntax = 'proto3';
+
+package mjus;
+
+import 'google/protobuf/empty.proto';
+import 'google/protobuf/struct.proto';
+
+service Resources {
+	// Creates a new remote.
+	// Assumes all remote properties are set.
+	rpc createRemote(Remote) returns (google.protobuf.Empty) {}
+	// Deletes a remote. Assumes that no wish or offer exist for the remote.
+	// Assumes ìd` is set.
+	rpc deleteRemote(Remote) returns (google.protobuf.Empty) {}
+
+	// Creates or updates an offer. Assumes a remote is registered for the provided beneficiary id.
+	// Assumes all offer properties are set.
+	rpc updateOffer(Offer) returns (google.protobuf.Empty) {}
+	// Withdraws an offer. On response, we assume no wish for the offer is deployed anymore or will be deployed.
+	// Assumes `name` and `beneficiaryId` are set.
+	rpc deleteOffer(Offer) returns (google.protobuf.Empty) {}
+	// Polls for satisfaction of a wish. If offer is returned, the wish is satisfied with it. If the withdrawn boolean
+	// is returned, `true` indicates that the offer was withdrawn, and `false` indicates that the offer state is unknown.
+	// Assumes all wish properties are set.
+	rpc getRemoteOffer(Wish) returns (OptionalOffer) {}
+}
+
+message Remote {
+	string id = 1;
+	string host = 2;
+	int32 port = 3;
+}
+
+message Offer {
+	string name = 1;
+	string beneficiaryId = 2;
+	google.protobuf.Struct offer = 3;
+}
+
+message Wish {
+	string name = 1;
+	string targetId = 2;
+}
+
+message OptionalOffer {
+	oneof val {
+		bool withdrawn = 1;
+		Offer offer = 2;
+	}
+}
