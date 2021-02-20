@@ -24,24 +24,46 @@ export const cleanupStack = (): Promise<void> =>
 export const baseResourceTest = (
 	testName: string,
 	program: PulumiFn,
-	correctUpResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void
+	checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void
+): Promise<void> =>
+	multiStepResourceTest(testName, [{ program: program, checkResult: checkResult }]);
+
+export const multiStepResourceTest = (
+	testName: string,
+	steps: {
+		program: PulumiFn;
+		checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void;
+	}[]
 ): Promise<void> => {
 	console.info('Running test: ' + testName);
 	return startResourcesService()
 		.then((stopResourcesService) =>
 			stack()
-				.then((stack) => stack.up({ program: program }))
-				.then(
-					(res) =>
-						new Promise((resolve, reject) =>
-							correctUpResult(res, () => resolve(undefined), reject)
-						)
-				)
-				.then(cleanupStack)
-				.then(() => stopResourcesService())
+				.then((stack) => runSteps(stack, steps))
+				.finally(cleanupStack)
+				.finally(() => stopResourcesService())
 		)
 		.then(() => console.info('Completed test: ' + testName));
 };
+
+const runSteps = async (
+	stack: Stack,
+	steps: {
+		program: PulumiFn;
+		checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void;
+	}[]
+): Promise<void> =>
+	steps.length === 0
+		? Promise.resolve()
+		: stack
+				.up({ program: steps[0].program })
+				.then(
+					(res) =>
+						new Promise((resolve, reject) =>
+							steps[0].checkResult(res, () => resolve(undefined), reject)
+						)
+				)
+				.then(() => runSteps(stack, steps.slice(1)));
 
 export const runTests = (tests: Promise<unknown>): Promise<void> =>
 	tests
