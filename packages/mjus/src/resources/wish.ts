@@ -1,50 +1,151 @@
-import { CustomResourceOptions, dynamic, Input, Output } from '@pulumi/pulumi';
+import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
+import * as rpc from '@mjus/grpc-protos';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
-import { RemoteConnection } from '..';
+import { RemoteConnection } from './remote-connection';
+import { getWish, wishDeleted } from '../runtime-offers';
+import { isDeepStrictEqual } from 'util';
 
-type WishInputs<O> = {
+type WishProps<O> = {
 	offerName: string;
 	target: RemoteConnection;
-	value: O;
+	offer: O | null;
+	isSatisfied: boolean;
+	error: string | null; // Workaround to indicate error in resource provider
 };
 
 class WishProvider<O> implements dynamic.ResourceProvider {
+	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
+	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
+	// input property.
+
 	async create(
-		inputs: WishInputs<O> // Due to serialization all `Resource` values reduced to their id
-	): Promise<dynamic.CreateResult & { outs: WishInputs<O> }> {
-		const offer: unknown = 'website-40eae63';
-		return { id: `${inputs.target}:${inputs.offerName}`, outs: { ...inputs, value: <O>offer } };
+		props: WishProps<O> // Due to serialization all `Resource` values reduced to their id
+	): Promise<dynamic.CreateResult & { outs: WishProps<O> }> {
+		try {
+			const wishRequest = new rpc.Wish()
+				.setName(props.offerName)
+				.setTargetid(`${props.target}`);
+			const wish = await getWish(wishRequest);
+
+			const outProps: WishProps<O> = {
+				...props,
+				isSatisfied: wish.hasOffer(),
+				offer: wish.hasOffer() ? (wish.getOffer()?.toJavaScript() as O | null) : null,
+			};
+			return {
+				id: `${props.target}:${props.offerName}`,
+				outs: outProps,
+			};
+		} catch (e) {
+			return {
+				id: `${props.target}:${props.offerName}`,
+				outs: { ...props, error: e.message },
+			};
+		}
+	}
+
+	async diff(
+		id: ID,
+		oldProps: WishProps<O>,
+		newProps: WishProps<O>
+	): Promise<dynamic.DiffResult> {
+		const wishRequest = new rpc.Wish()
+			.setName(newProps.offerName)
+			.setTargetid(`${newProps.target}`);
+		const wish = await getWish(wishRequest);
+		const satisfactionChanged =
+			// Unsatisfied wish became satisfied
+			(!oldProps.isSatisfied && wish.hasOffer()) ||
+			// Satisfied wish was withdrawn
+			(oldProps.isSatisfied && wish.hasIswithdrawn() && wish.getIswithdrawn());
+		const offerChanged =
+			satisfactionChanged ||
+			// Satisfied wish' value changed
+			(oldProps.isSatisfied &&
+				wish.hasOffer &&
+				!isDeepStrictEqual(oldProps.offer, wish.getOffer()?.toJavaScript()));
+
+		return {
+			changes:
+				oldProps.target === newProps.target &&
+				oldProps.offerName === newProps.offerName &&
+				offerChanged,
+			replaces: [
+				oldProps.target !== newProps.target ? 'target' : null,
+				oldProps.offerName !== newProps.offerName ? 'offerName' : null,
+				oldProps.isSatisfied !== satisfactionChanged ? 'isSatisfied' : null,
+			].filter((v) => v !== null) as string[],
+			deleteBeforeReplace: true,
+		};
+	}
+
+	async update(
+		id: ID,
+		oldProps: WishProps<O>,
+		newProps: WishProps<O>
+	): Promise<dynamic.UpdateResult> {
+		try {
+			const wishRequest = new rpc.Wish()
+				.setName(newProps.offerName)
+				.setTargetid(`${newProps.target}`);
+			const wish = await getWish(wishRequest);
+
+			if (!oldProps.isSatisfied || !wish.hasOffer)
+				throw new Error('Wish can only be updated if satisfied before and afterwards');
+
+			const outProps: WishProps<O> = {
+				...newProps,
+				offer: wish.getOffer()?.toJavaScript() as O | null,
+			};
+			return { outs: outProps };
+		} catch (e) {
+			return { outs: { ...oldProps, error: e.message } };
+		}
+	}
+
+	async delete(id: ID, props: WishProps<O>): Promise<void> {
+		if (props.isSatisfied) {
+			const wish = new rpc.Wish().setName(props.offerName).setTargetid(`${props.target}`);
+			await wishDeleted(wish);
+		}
 	}
 }
 
-export type WishArgs = WrappedInputs<Omit<WishInputs<unknown>, 'value'>>;
-type WishProps<O> = Readonly<WrappedOutputs<WishInputs<O>>>;
-export class Wish<O> extends dynamic.Resource implements WishProps<O> {
+export type WishInputs = WrappedInputs<Omit<WishProps<unknown>, 'isSatisfied' | 'offer' | 'error'>>;
+type WishOutputs<O> = Readonly<WrappedOutputs<WishProps<O>>>;
+export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 	constructor(target: Input<RemoteConnection>, offerName: string, opts?: CustomResourceOptions);
-	constructor(name: string, props: WishArgs, opts?: CustomResourceOptions);
+	constructor(name: string, props: WishInputs, opts?: CustomResourceOptions);
 	constructor(
 		nameOrTarget: string | Input<RemoteConnection>,
-		argsOrOfferName: WishArgs | string,
+		argsOrOfferName: WishInputs | string,
 		opts?: CustomResourceOptions
 	) {
-		const [name, args]: [string, WrappedInputs<WishInputs<unknown>> | undefined] =
+		const [name, args]: [string, WishInputs | undefined] =
 			typeof nameOrTarget === 'string' && typeof argsOrOfferName !== 'string'
-				? [nameOrTarget, { ...argsOrOfferName, value: null }]
+				? [nameOrTarget, argsOrOfferName]
 				: nameOrTarget !== 'string' && typeof argsOrOfferName === 'string'
 				? [
 						`${(<RemoteConnection>nameOrTarget).name}:${argsOrOfferName}`,
 						{
 							offerName: argsOrOfferName,
 							target: <Input<RemoteConnection>>nameOrTarget,
-							value: null,
 						},
 				  ]
 				: ['invalid wish configuration', undefined];
 		if (!args) throw new Error('Unsupported wish configuration');
-		super(new WishProvider<O>(), name, args, opts);
+		const props: WrappedInputs<WishProps<O>> = {
+			...args,
+			isSatisfied: false,
+			offer: null,
+			error: null,
+		};
+		super(new WishProvider<O>(), name, props, opts);
 	}
 
 	public readonly offerName!: Output<string>;
 	public readonly target!: Output<RemoteConnection>;
-	public readonly value!: Output<O>;
+	public readonly isSatisfied!: Output<boolean>;
+	public readonly offer!: Output<O | null>;
+	public readonly error!: Output<null | string>;
 }

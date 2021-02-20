@@ -9,7 +9,7 @@ import { baseResourceTest, runTests } from './resource-mtest-utils';
 /* eslint-disable no-console */
 runTests(
 	baseResourceTest(
-		'void wish both constructors',
+		'unsatisfied wish both constructors',
 		async () => {
 			const r = new RemoteConnection('testRemote', {});
 			const w1 = new Wish(r, 'testWish', undefined);
@@ -22,15 +22,14 @@ runTests(
 		(upResult, resolve, reject) => {
 			console.log('Output:');
 			console.log(JSON.stringify(upResult.outputs));
-			JSON.stringify(upResult.outputs).match(
-				'{"w1":{"value":{"id":"testRemote:testWish","offerName":"testWish","target":"testRemote","urn":' +
-					'"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote:testWish","value' +
-					'":"website-40eae63"},"secret":false},"w2":{"value":{"id":"testRemote:testWish","offerName":"tes' +
-					'tWish","target":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Re' +
-					'source::directlyNamedTestWish","value":"website-40eae63"},"secret":false}}'
-			)
+			JSON.stringify(upResult.outputs) ===
+			'{"w1":{"value":{"error":null,"id":"testRemote:testWish","isSatisfied":false,"offer":null,"offerName":"te' +
+				'stWish","target":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::' +
+				'testRemote:testWish"},"secret":false},"w2":{"value":{"error":null,"id":"testRemote:testWish","isSatisfie' +
+				'd":false,"offer":null,"offerName":"testWish","target":"testRemote","urn":"urn:pulumi:testStack::testProj' +
+				'ect::pulumi-nodejs:dynamic:Resource::directlyNamedTestWish"},"secret":false}}'
 				? resolve()
-				: reject('void wish: unexpected output');
+				: reject('unsatisfied wish both constructors: unexpected outputs');
 		}
 	)
 );

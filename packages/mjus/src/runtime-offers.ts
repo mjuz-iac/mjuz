@@ -32,6 +32,10 @@ export const updateOffer = (offer: rpc.Offer): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.updateOffer(offer, cb));
 export const deleteOffer = (offer: rpc.Offer): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.deleteOffer(offer, cb));
+export const getWish = (wish: rpc.Wish): Promise<rpc.Wish> =>
+	resourcesClientRpc((client, cb) => client.getWish(wish, cb));
+export const wishDeleted = (wish: rpc.Wish): Promise<Empty> =>
+	resourcesClientRpc((client, cb) => client.wishDeleted(wish, cb));
 
 class ResourcesServer implements rpc.IResourcesServer {
 	[name: string]: grpc.UntypedHandleCall;
@@ -58,11 +62,16 @@ class ResourcesServer implements rpc.IResourcesServer {
 		cb(null, new Empty());
 	}
 
-	getRemoteOffer(
-		call: grpc.ServerUnaryCall<rpc.Wish, rpc.OptionalOffer>,
-		cb: sendUnaryData<rpc.OptionalOffer>
-		// eslint-disable-next-line @typescript-eslint/no-empty-function
-	): void {}
+	getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
+		const wish = call.request as rpc.Wish;
+		logger.info(wish, 'Polling remote offer');
+		cb(null, wish);
+	}
+	wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
+		const wish = call.request as rpc.Wish;
+		logger.info(wish, 'Wish was deleted');
+		cb(null, new Empty());
+	}
 }
 
 export const startResourcesService = (): Promise<() => Promise<void>> =>
