@@ -2,6 +2,7 @@ import { IO, runIO } from '@funkia/io';
 import { Behavior, Future } from '@funkia/hareactive';
 import { Action, newLogger, reactionLoop, startResourcesService } from '.';
 import * as yargs from 'yargs';
+import { startDeploymentService } from './deployment-service';
 
 const logger = newLogger('runtime');
 
@@ -39,21 +40,28 @@ export const runDeployment = <S>(
 	initOperation: () => IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: Behavior<Behavior<Future<Action>>>,
-	options?: Partial<RuntimeOptions>
+	options?: Partial<RuntimeOptions>,
+	disableExit = false
 ): Promise<S> => {
 	const opts = getOptions(options || {});
-	return startResourcesService(opts.resourcesHost, opts.resourcesPort)
-		.then((stopResourcesService: () => Promise<void>) =>
-			runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
-				stopResourcesService().then(() => finalStack)
-			)
-		)
+	return Promise.all<() => Promise<void>, () => Promise<void>>([
+		startResourcesService(opts.resourcesHost, opts.resourcesPort),
+		startDeploymentService(opts.deploymentHost, opts.deploymentPort),
+	])
+		.then((res) => {
+			const [stopResourcesService, stopDeploymentService] = res;
+			return runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
+				Promise.all([stopResourcesService(), stopDeploymentService()]).then(
+					() => finalStack
+				)
+			);
+		})
 		.catch((err) => {
 			logger.error(err, 'Deployment error');
 			process.exit(1);
 		})
 		.finally(() => {
 			logger.info('Deployment terminated');
-			process.exit(0);
+			if (!disableExit) process.exit(0);
 		});
 };
