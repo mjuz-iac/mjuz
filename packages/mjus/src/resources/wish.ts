@@ -31,6 +31,7 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 				...props,
 				isSatisfied: wish.hasOffer(),
 				offer: wish.hasOffer() ? (wish.getOffer()?.toJavaScript() as O | null) : null,
+				error: null,
 			};
 			return {
 				id: `${props.target}:${props.offerName}`,
@@ -42,6 +43,20 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 				outs: { ...props, error: e.message },
 			};
 		}
+	}
+
+	async check(oldProps: WishProps<O>, newProps: WishProps<O>): Promise<dynamic.CheckResult> {
+		return {
+			inputs: newProps,
+			failures: [
+				oldProps.target && oldProps.target !== newProps.target
+					? { property: 'target', reason: 'Target deployment may not change' }
+					: null,
+				oldProps.offerName && oldProps.offerName !== newProps.offerName
+					? { property: 'offerName', reason: 'Offer name may not change' }
+					: null,
+			].filter((v) => v !== null) as dynamic.CheckFailure[],
+		};
 	}
 
 	async diff(
@@ -66,15 +81,11 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 				!isDeepStrictEqual(oldProps.offer, wish.getOffer()?.toJavaScript()));
 
 		return {
-			changes:
-				oldProps.target === newProps.target &&
-				oldProps.offerName === newProps.offerName &&
-				offerChanged,
-			replaces: [
-				oldProps.target !== newProps.target ? 'target' : null,
-				oldProps.offerName !== newProps.offerName ? 'offerName' : null,
-				oldProps.isSatisfied !== satisfactionChanged ? 'isSatisfied' : null,
-			].filter((v) => v !== null) as string[],
+			changes: offerChanged,
+			replaces: [oldProps.isSatisfied !== satisfactionChanged ? 'isSatisfied' : null].filter(
+				(v) => v !== null
+			) as string[],
+			stables: ['target', 'offerName'],
 			deleteBeforeReplace: true,
 		};
 	}
@@ -96,6 +107,7 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 			const outProps: WishProps<O> = {
 				...newProps,
 				offer: wish.getOffer()?.toJavaScript() as O | null,
+				error: null,
 			};
 			return { outs: outProps };
 		} catch (e) {
