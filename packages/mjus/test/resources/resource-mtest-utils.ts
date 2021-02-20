@@ -36,7 +36,7 @@ export const multiStepResourceTest = (
 	}[]
 ): Promise<void> => {
 	console.info('Running test: ' + testName);
-	return startResourcesService()
+	return startResourcesService('127.0.0.1', 19951)
 		.then((stopResourcesService) =>
 			stack()
 				.then((stack) => runSteps(stack, steps))

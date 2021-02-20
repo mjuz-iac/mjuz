@@ -4,10 +4,10 @@ import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as rpc from '@mjus/grpc-protos';
 import { newLogger } from './logging';
 
-const REMOTES_SERVICE_PORT = '127.0.0.1:19951';
-
 const logger = newLogger('offer runtime');
 
+let resourcesClientHost: string;
+let resourcesClientPort: number;
 const resourcesClientRpc = <R>(
 	callFunction: (
 		client: rpc.ResourcesClient,
@@ -16,7 +16,7 @@ const resourcesClientRpc = <R>(
 ): Promise<R> =>
 	new Promise((resolve, reject) => {
 		const client = new rpc.ResourcesClient(
-			REMOTES_SERVICE_PORT,
+			`${resourcesClientHost}:${resourcesClientPort}`,
 			grpc.credentials.createInsecure()
 		);
 		callFunction(client, (error, res) => {
@@ -74,14 +74,16 @@ class ResourcesServer implements rpc.IResourcesServer {
 	}
 }
 
-export const startResourcesService = (): Promise<() => Promise<void>> =>
+export const startResourcesService = (host: string, port: number): Promise<() => Promise<void>> =>
 	new Promise((resolve, reject) => {
+		resourcesClientHost = host;
+		resourcesClientPort = port;
 		const server = new grpc.Server();
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		server.addService(rpc.ResourcesService, new ResourcesServer());
 		server.bindAsync(
-			REMOTES_SERVICE_PORT,
+			`${host}:${port}`,
 			grpc.ServerCredentials.createInsecure(),
 			(err, port) => {
 				if (err) return reject(err);
