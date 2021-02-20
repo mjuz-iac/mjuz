@@ -124,7 +124,9 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 }
 
 export type WishInputs = WrappedInputs<Omit<WishProps<unknown>, 'isSatisfied' | 'offer' | 'error'>>;
-type WishOutputs<O> = Readonly<WrappedOutputs<WishProps<O>>>;
+// Exclude null from offer for easier syntax
+// (idea behind: whenever a resource depending on the offer is deployed, the offer will be satisfied)
+type WishOutputs<O> = Readonly<WrappedOutputs<WishProps<O> & { offer: O }>>;
 export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 	constructor(target: Input<RemoteConnection>, offerName: string, opts?: CustomResourceOptions);
 	constructor(name: string, props: WishInputs, opts?: CustomResourceOptions);
@@ -158,6 +160,6 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 	public readonly offerName!: Output<string>;
 	public readonly target!: Output<RemoteConnection>;
 	public readonly isSatisfied!: Output<boolean>;
-	public readonly offer!: Output<O | null>;
+	public readonly offer!: Output<O>;
 	public readonly error!: Output<null | string>;
 }

@@ -28,7 +28,7 @@ const program = async () => {
 
 	// write our index.html into the site bucket
 	const index = new aws.s3.BucketObject('index', {
-		bucket: bucketWish.value,
+		bucket: bucketWish.offer,
 		content: content,
 		contentType: 'text/html; charset=utf-8',
 		key: 'index.html',
