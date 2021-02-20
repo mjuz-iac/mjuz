@@ -10,7 +10,7 @@ import { createRemote, deleteRemote } from '../runtime-offers';
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 19952;
 
-type RemoteConnectionInputs = {
+type RemoteConnectionProps = {
 	name: string;
 	host: string;
 	port: number;
@@ -21,9 +21,10 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
 	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
 	// input property.
+
 	async create(
-		inputs: RemoteConnectionInputs
-	): Promise<dynamic.CreateResult & { outs: RemoteConnectionInputs }> {
+		inputs: RemoteConnectionProps
+	): Promise<dynamic.CreateResult & { outs: RemoteConnectionProps }> {
 		try {
 			const remote = new rpc.Remote()
 				.setId(inputs.name)
@@ -31,7 +32,11 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 				.setPort(inputs.port);
 			await createRemote(remote);
 
-			return { id: inputs.name, outs: inputs };
+			const outProps: RemoteConnectionProps = {
+				...inputs,
+				error: null,
+			};
+			return { id: inputs.name, outs: outProps };
 		} catch (e) {
 			return { id: inputs.name, outs: { ...inputs, error: e.message } };
 		}
@@ -44,14 +49,19 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 };
 
 export type RemoteConnectionArgs = Partial<
-	WrappedInputs<Omit<RemoteConnectionInputs, 'name' | 'error'>>
+	WrappedInputs<Omit<RemoteConnectionProps, 'name' | 'error'>>
 >;
-type RemoteConnectionProps = Readonly<WrappedOutputs<Omit<RemoteConnectionInputs, 'name'>>>;
-export class RemoteConnection extends dynamic.Resource implements RemoteConnectionProps {
+type RemoteConnectionOutputs = Readonly<WrappedOutputs<Omit<RemoteConnectionProps, 'name'>>>;
+export class RemoteConnection extends dynamic.Resource implements RemoteConnectionOutputs {
 	constructor(name: string, args: RemoteConnectionArgs, opts?: CustomResourceOptions) {
-		if (!args.host) args.host = DEFAULT_HOST;
-		if (!args.port) args.port = DEFAULT_PORT;
-		super(remoteConnectionProvider, name, { ...args, name: name, error: null }, opts);
+		const props: WrappedInputs<RemoteConnectionProps> = {
+			...args,
+			host: args.host || DEFAULT_HOST,
+			port: args.port || DEFAULT_PORT,
+			name: name,
+			error: null,
+		};
+		super(remoteConnectionProvider, name, props, opts);
 		this.name = name;
 	}
 
