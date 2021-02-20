@@ -24,9 +24,9 @@ runTests(
 			console.log('Output:');
 			console.log(JSON.stringify(upResult.outputs));
 			JSON.stringify(upResult.outputs).match(
-				'{"o1":{"value":{"beneficiary":"testRemote","id":"testRemote:testOffer","offerName":"testOffer","urn":"' +
+				'{"o1":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offerName":"testOffer","urn":"' +
 					'urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote:testOffer"},"secre' +
-					't":false},"o2":{"value":{"beneficiary":"testRemote","id":"testRemote:testOffer","offerName":"testOffer' +
+					't":false},"o2":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offerName":"testOffer' +
 					'","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::directlyNamedTestOff' +
 					'er"},"secret":false}}'
 			)

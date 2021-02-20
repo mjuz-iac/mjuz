@@ -34,7 +34,7 @@ message Remote {
 message Offer {
 	string name = 1;
 	string beneficiaryId = 2;
-	google.protobuf.Struct offer = 3;
+	google.protobuf.Value offer = 3;
 }
 
 message Wish {
