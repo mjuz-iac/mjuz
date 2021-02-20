@@ -6,3 +6,6 @@ export type WrappedInputs<T> = {
 export type WrappedOutputs<T> = {
 	[P in keyof T]: Output<T[P]>;
 };
+export type Typify<T> = {
+	[K in keyof T]: T[K];
+};

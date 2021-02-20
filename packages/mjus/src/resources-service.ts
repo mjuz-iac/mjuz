@@ -3,8 +3,10 @@ import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as rpc from '@mjus/grpc-protos';
 import { newLogger } from './logging';
+import { startService } from './service-utils';
+import { Typify } from './type-utils';
 
-const logger = newLogger('offer runtime');
+const logger = newLogger('resources service');
 
 let resourcesClientHost: string;
 let resourcesClientPort: number;
@@ -74,29 +76,15 @@ class ResourcesServer implements rpc.IResourcesServer {
 	}
 }
 
-export const startResourcesService = (host: string, port: number): Promise<() => Promise<void>> =>
-	new Promise((resolve, reject) => {
-		resourcesClientHost = host;
-		resourcesClientPort = port;
-		const server = new grpc.Server();
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		server.addService(rpc.ResourcesService, new ResourcesServer());
-		server.bindAsync(
-			`${host}:${port}`,
-			grpc.ServerCredentials.createInsecure(),
-			(err, port) => {
-				if (err) return reject(err);
-				logger.info(`Resources service binding port ${port}`);
-				server.start();
-				logger.info(`Resources service started on port ${port}`);
-
-				resolve(() => stopServer(server, 'resources service'));
-			}
-		);
-	});
-
-const stopServer = async (server: grpc.Server, name: string): Promise<void> => {
-	logger.info(`Shutting down ${name}`);
-	server.forceShutdown();
+export const startResourcesService = (host: string, port: number): Promise<() => Promise<void>> => {
+	resourcesClientHost = host;
+	resourcesClientPort = port;
+	return startService(
+		'resources',
+		rpc.ResourcesService as Typify<rpc.IResourcesService>,
+		new ResourcesServer(),
+		host,
+		port,
+		logger
+	);
 };

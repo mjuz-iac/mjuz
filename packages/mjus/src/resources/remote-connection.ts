@@ -1,7 +1,7 @@
 import { CustomResourceOptions, dynamic, ID, Output } from '@pulumi/pulumi';
 import * as rpc from '@mjus/grpc-protos';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
-import { createRemote, deleteRemote } from '../runtime-offers';
+import { createRemote, deleteRemote } from '../resources-service';
 
 /**
  * Name and id of `RemoteConnection resources equal.

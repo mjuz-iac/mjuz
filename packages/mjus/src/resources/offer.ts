@@ -1,7 +1,7 @@
 import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
 import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 import * as rpc from '@mjus/grpc-protos';
-import { deleteOffer, updateOffer } from '../runtime-offers';
+import { deleteOffer, updateOffer } from '../resources-service';
 import { RemoteConnection } from './remote-connection';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { isDeepStrictEqual } from 'util';

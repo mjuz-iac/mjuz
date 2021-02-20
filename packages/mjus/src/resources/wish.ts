@@ -2,7 +2,7 @@ import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulum
 import * as rpc from '@mjus/grpc-protos';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { RemoteConnection } from './remote-connection';
-import { getWish, wishDeleted } from '../runtime-offers';
+import { getWish, wishDeleted } from '../resources-service';
 import { isDeepStrictEqual } from 'util';
 
 type WishProps<O> = {
