@@ -1,3 +1,4 @@
+import { sinkStream, Stream } from '@funkia/hareactive';
 import * as grpc from '@grpc/grpc-js';
 import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
@@ -39,52 +40,102 @@ export const getWish = (wish: rpc.Wish): Promise<rpc.Wish> =>
 export const wishDeleted = (wish: rpc.Wish): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.wishDeleted(wish, cb));
 
-class ResourcesServer implements rpc.IResourcesServer {
-	[name: string]: grpc.UntypedHandleCall;
+export type ResourcesService = {
+	server: rpc.IResourcesServer;
+	remoteCreated: Stream<rpc.Remote>;
+	remoteDeleted: Stream<rpc.Remote>;
+	offerUpdated: Stream<rpc.Offer>;
+	offerWithdrawn: Stream<[rpc.Offer, (error: Error | null) => void]>;
+	wishPolled: Stream<[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
+	wishDeleted: Stream<rpc.Wish>;
+	stopService: () => Promise<void>;
+};
+const resourceService = (): Omit<ResourcesService, 'stopService'> => {
+	class ResourcesServer implements rpc.IResourcesServer {
+		[name: string]: grpc.UntypedHandleCall;
 
-	createRemote(call: grpc.ServerUnaryCall<rpc.Remote, Empty>, cb: sendUnaryData<Empty>): void {
-		const remote = call.request as rpc.Remote;
-		logger.info(remote, 'Creating remote');
-		cb(null, new Empty());
-	}
-	deleteRemote(call: grpc.ServerUnaryCall<rpc.Remote, Empty>, cb: sendUnaryData<Empty>): void {
-		const remote = call.request as rpc.Remote;
-		logger.info(remote, 'Deleting remote');
-		cb(null, new Empty());
+		createRemote(
+			call: grpc.ServerUnaryCall<rpc.Remote, Empty>,
+			cb: sendUnaryData<Empty>
+		): void {
+			const remote = call.request as rpc.Remote;
+			logger.info(remote, 'Remote created');
+			remoteCreated.push(remote);
+			cb(null, new Empty());
+		}
+
+		deleteRemote(
+			call: grpc.ServerUnaryCall<rpc.Remote, Empty>,
+			cb: sendUnaryData<Empty>
+		): void {
+			const remote = call.request as rpc.Remote;
+			logger.info(remote, 'Remote deleted');
+			remoteDeleted.push(remote);
+			cb(null, new Empty());
+		}
+
+		updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
+			const offer = call.request as rpc.Offer;
+			logger.info(offer, 'Offer updated');
+			offerUpdated.push(offer);
+			cb(null, new Empty());
+		}
+
+		deleteOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
+			const offer = call.request as rpc.Offer;
+			logger.info(offer, 'Withdrawing offer');
+			offerWithdrawn.push([offer, (error) => cb(error, new Empty())]);
+		}
+
+		getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
+			const wish = call.request as rpc.Wish;
+			logger.info(wish, 'Polling remote offer');
+			wishPolled.push([wish, cb]);
+		}
+
+		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
+			const wish = call.request as rpc.Wish;
+			logger.info(wish, 'Wish deleted');
+			wishDeleted.push(wish);
+			cb(null, new Empty());
+		}
 	}
 
-	updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
-		const offer = call.request as rpc.Offer;
-		logger.info(offer, 'Updating offer');
-		cb(null, new Empty());
-	}
-	deleteOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
-		const offer = call.request as rpc.Offer;
-		logger.info(offer, 'Deleting offer');
-		cb(null, new Empty());
-	}
+	const remoteCreated = sinkStream<rpc.Remote>();
+	const remoteDeleted = sinkStream<rpc.Remote>();
+	const offerUpdated = sinkStream<rpc.Offer>();
+	const offerWithdrawn = sinkStream<[rpc.Offer, (error: Error | null) => void]>();
+	const wishPolled = sinkStream<
+		[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]
+	>();
+	const wishDeleted = sinkStream<rpc.Wish>();
 
-	getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
-		const wish = call.request as rpc.Wish;
-		logger.info(wish, 'Polling remote offer');
-		cb(null, wish);
-	}
-	wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
-		const wish = call.request as rpc.Wish;
-		logger.info(wish, 'Wish was deleted');
-		cb(null, new Empty());
-	}
-}
+	return {
+		server: new ResourcesServer(),
+		remoteCreated,
+		remoteDeleted,
+		offerUpdated,
+		offerWithdrawn,
+		wishPolled,
+		wishDeleted,
+	};
+};
 
-export const startResourcesService = (host: string, port: number): Promise<() => Promise<void>> => {
+export const startResourcesService = (host: string, port: number): Promise<ResourcesService> => {
 	resourcesClientHost = host;
 	resourcesClientPort = port;
+	const service = resourceService();
 	return startService(
 		'resources',
 		rpc.ResourcesService as Typify<rpc.IResourcesService>,
-		new ResourcesServer(),
+		service.server,
 		host,
 		port,
 		logger
-	);
+	).then((stopService) => {
+		return {
+			...service,
+			stopService,
+		};
+	});
 };

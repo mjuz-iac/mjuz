@@ -1,12 +1,13 @@
 import { IO, runIO } from '@funkia/io';
 import { Behavior, Future } from '@funkia/hareactive';
-import { Action, newLogger, reactionLoop, startResourcesService } from '.';
+import { Action, newLogger, reactionLoop, ResourcesService, startResourcesService } from '.';
 import * as yargs from 'yargs';
 import { startDeploymentService } from './deployment-service';
 
 const logger = newLogger('runtime');
 
 type RuntimeOptions = {
+	name: string;
 	deploymentHost: string;
 	deploymentPort: number;
 	resourcesHost: string;
@@ -14,6 +15,11 @@ type RuntimeOptions = {
 };
 const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 	yargs.options({
+		name: {
+			alias: 'name',
+			default: defaults.name || 'deployment',
+			description: 'Name of the deployment (used for identification with other deployments)',
+		},
 		deploymentHost: {
 			alias: 'dh',
 			default: defaults.deploymentHost || '0.0.0.0',
@@ -44,14 +50,14 @@ export const runDeployment = <S>(
 	disableExit = false
 ): Promise<S> => {
 	const opts = getOptions(options || {});
-	return Promise.all<() => Promise<void>, () => Promise<void>>([
+	return Promise.all<ResourcesService, () => Promise<void>>([
 		startResourcesService(opts.resourcesHost, opts.resourcesPort),
 		startDeploymentService(opts.deploymentHost, opts.deploymentPort),
 	])
 		.then((res) => {
-			const [stopResourcesService, stopDeploymentService] = res;
+			const [resourcesService, stopDeploymentService] = res;
 			return runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
-				Promise.all([stopResourcesService(), stopDeploymentService()]).then(
+				Promise.all([resourcesService.stopService(), stopDeploymentService()]).then(
 					() => finalStack
 				)
 			);

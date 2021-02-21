@@ -37,11 +37,11 @@ export const multiStepResourceTest = (
 ): Promise<void> => {
 	console.info('Running test: ' + testName);
 	return startResourcesService('127.0.0.1', 19951)
-		.then((stopResourcesService) =>
+		.then((resourcesService) =>
 			stack()
 				.then((stack) => runSteps(stack, steps))
 				.finally(cleanupStack)
-				.finally(() => stopResourcesService())
+				.finally(() => resourcesService.stopService())
 		)
 		.then(() => console.info('Completed test: ' + testName));
 };
