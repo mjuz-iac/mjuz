@@ -9,6 +9,14 @@ import { Typify } from './type-utils';
 
 const logger = newLogger('deployment service');
 
+export const toDeploymentOffer = <O>(offer: rpc.DeploymentOffer): DeploymentOffer<O> => {
+	return {
+		origin: offer.getOrigin(),
+		name: offer.getName(),
+		offer: offer.getOffer()?.toJavaScript() as O,
+	};
+};
+
 const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 	server: rpc.IDeploymentServer;
 } => {
@@ -22,7 +30,7 @@ const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 			const offer = call.request as rpc.DeploymentOffer;
 			logger.info(offer, 'Received offer');
 			cb(null, new Empty());
-			offers.push(offer.toObject());
+			offers.push(toDeploymentOffer(offer));
 		}
 
 		releaseOffer(
@@ -31,12 +39,12 @@ const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 		): void {
 			const offer = call.request as rpc.DeploymentOffer;
 			logger.info(offer, 'Releasing offer');
-			releaseOffers.push([offer.toObject(), () => cb(null, new Empty())]);
+			releaseOffers.push([toDeploymentOffer(offer), () => cb(null, new Empty())]);
 		}
 	}
 
-	const offers = sinkStream<DeploymentOffer>();
-	const releaseOffers = sinkStream<[DeploymentOffer, () => void]>();
+	const offers = sinkStream<DeploymentOffer<unknown>>();
+	const releaseOffers = sinkStream<[DeploymentOffer<unknown>, () => void]>();
 
 	return {
 		server: new DeploymentServer(),
@@ -45,10 +53,10 @@ const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 	};
 };
 
-export type DeploymentOffer = rpc.DeploymentOffer.AsObject;
+export type DeploymentOffer<O> = Omit<rpc.DeploymentOffer.AsObject, 'offer'> & { offer: O };
 export type DeploymentService = {
-	offers: Stream<DeploymentOffer>;
-	releaseOffers: Stream<[DeploymentOffer, () => void]>;
+	offers: Stream<DeploymentOffer<unknown>>;
+	releaseOffers: Stream<[DeploymentOffer<unknown>, () => void]>;
 	stop: () => Promise<void>;
 };
 export const startDeploymentService = async (
