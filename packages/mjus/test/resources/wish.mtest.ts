@@ -1,5 +1,6 @@
-import { Wish, RemoteConnection } from '../../src';
+import { Wish, RemoteConnection } from '../../src/resources';
 import { baseResourceTest, runTests } from './resource-mtest-utils';
+import { toRpcWish } from '../../src';
 
 /**
  * These tests cannot be executed inside jest due to this problem:
@@ -32,7 +33,7 @@ runTests(
 				: reject('unsatisfied wish both constructors: unexpected outputs');
 		},
 		async (resourcesService) => {
-			resourcesService.wishPolled.subscribe((p) => p[1](null, p[0]));
+			resourcesService.wishPolled.subscribe((p) => p[1](null, toRpcWish(p[0])));
 		}
 	)
 );

@@ -1,4 +1,4 @@
-import { Offer, RemoteConnection } from '../../src';
+import { Offer, RemoteConnection } from '../../src/resources';
 import { baseResourceTest, multiStepResourceTest, runTests } from './resource-mtest-utils';
 
 /**

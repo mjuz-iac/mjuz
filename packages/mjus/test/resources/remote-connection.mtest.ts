@@ -1,4 +1,4 @@
-import { RemoteConnection } from '../../src';
+import { RemoteConnection } from '../../src/resources';
 import { baseResourceTest, runTests } from './resource-mtest-utils';
 
 /**
