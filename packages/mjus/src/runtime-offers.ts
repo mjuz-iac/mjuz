@@ -15,6 +15,7 @@ import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, ResourcesService } from './resources-service';
 import { newLogger } from './logging';
 import { Value } from 'google-protobuf/google/protobuf/struct_pb';
+import { DeploymentService } from './deployment-service';
 
 const logger = newLogger('offers runtime');
 
@@ -121,9 +122,11 @@ const directOfferForward = (
 		);
 
 export type OffersRuntime = {
+	inboundOfferUpdates: Stream<void>;
 	stop: () => Promise<void>;
 };
 export const startOffersRuntime = async (
+	deployment: DeploymentService,
 	resources: ResourcesService,
 	deploymentName: string
 ): Promise<OffersRuntime> => {
@@ -138,16 +141,22 @@ export const startOffersRuntime = async (
 			)
 		)
 	);
+
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
 	);
 	offersDirectForward.activate(tick());
 
+	const inboundOfferChanges: Stream<void> = combine(
+		deployment.offers.mapTo(undefined),
+		deployment.releaseOffers.mapTo(undefined)
+	);
+
 	const stop = async () => {
 		offersDirectForward.deactivate();
 	};
-
 	return {
+		inboundOfferUpdates: inboundOfferChanges,
 		stop,
 	};
 };

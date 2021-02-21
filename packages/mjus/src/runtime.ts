@@ -1,5 +1,5 @@
 import { IO, runIO } from '@funkia/io';
-import { Behavior, Future } from '@funkia/hareactive';
+import { Behavior, Future, Stream } from '@funkia/hareactive';
 import { Action, newLogger, reactionLoop, startResourcesService } from '.';
 import * as yargs from 'yargs';
 import { startDeploymentService } from './deployment-service';
@@ -46,7 +46,7 @@ const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 export const runDeployment = <S>(
 	initOperation: () => IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
-	nextAction: Behavior<Behavior<Future<Action>>>,
+	nextAction: (offerUpdates: Stream<void>) => Behavior<Behavior<Future<Action>>>,
 	options?: Partial<RuntimeOptions>,
 	disableExit = false
 ): Promise<S> => {
@@ -56,9 +56,15 @@ export const runDeployment = <S>(
 			startResourcesService(opts.resourcesHost, opts.resourcesPort),
 			startDeploymentService(opts.deploymentHost, opts.deploymentPort),
 		]);
-		const offersRuntime = await startOffersRuntime(resourcesService, opts.deploymentName);
+		const offersRuntime = await startOffersRuntime(
+			deploymentService,
+			resourcesService,
+			opts.deploymentName
+		);
 
-		const finalStack = await runIO(reactionLoop(initOperation, operations, nextAction));
+		const finalStack = await runIO(
+			reactionLoop(initOperation, operations, nextAction(offersRuntime.inboundOfferUpdates))
+		);
 		await Promise.all([resourcesService.stop(), deploymentService.stop(), offersRuntime.stop]);
 		return finalStack;
 	};

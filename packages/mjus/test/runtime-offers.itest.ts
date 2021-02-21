@@ -1,5 +1,6 @@
 import { sinkStream, SinkStream } from '@funkia/hareactive';
 import {
+	DeploymentOffer,
 	DeploymentService,
 	Offer,
 	Remote,
@@ -11,6 +12,10 @@ import { OffersRuntime, startOffersRuntime } from '../src/runtime-offers';
 import * as rpc from '@mjus/grpc-protos';
 
 describe('offers runtime', () => {
+	let deploymentService: DeploymentService & {
+		offers: SinkStream<DeploymentOffer<unknown>>;
+		releaseOffers: SinkStream<[DeploymentOffer<unknown>, () => void]>;
+	};
 	let resourcesService: ResourcesService & {
 		remoteCreated: SinkStream<Remote>;
 		remoteDeleted: SinkStream<Remote>;
@@ -22,6 +27,13 @@ describe('offers runtime', () => {
 	let offersRuntime: OffersRuntime;
 	let remoteDeploymentService: DeploymentService;
 	beforeEach(async () => {
+		deploymentService = {
+			offers: sinkStream<DeploymentOffer<unknown>>(),
+			releaseOffers: sinkStream<[DeploymentOffer<unknown>, () => void]>(),
+			stop: async () => {
+				// Intended to be empty
+			},
+		};
 		resourcesService = {
 			remoteCreated: sinkStream<Remote>(),
 			remoteDeleted: sinkStream<Remote>(),
@@ -33,7 +45,11 @@ describe('offers runtime', () => {
 				// Intended to be empty
 			},
 		};
-		offersRuntime = await startOffersRuntime(resourcesService, 'test-deployment');
+		offersRuntime = await startOffersRuntime(
+			deploymentService,
+			resourcesService,
+			'test-deployment'
+		);
 
 		remoteDeploymentService = await startDeploymentService('127.0.0.1', 19953);
 	});
@@ -75,5 +91,22 @@ describe('offers runtime', () => {
 		);
 		resourcesService.remoteDeleted.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		await deletedRemote;
+	});
+
+	test('inbound offer updates', async () => {
+		const threeUpdates = new Promise<void>((resolve) => {
+			let updates = 0;
+			offersRuntime.inboundOfferUpdates.subscribe(() => {
+				updates++;
+				if (updates === 3) resolve();
+			});
+		});
+
+		deploymentService.offers.push({ origin: 'a', name: 'b', offer: 'c' });
+		// eslint-disable-next-line @typescript-eslint/no-empty-function
+		deploymentService.releaseOffers.push([{ origin: 'a', name: 'b', offer: 'c' }, () => {}]);
+		deploymentService.offers.push({ origin: 'a', name: 'b', offer: 'c' });
+
+		await threeUpdates;
 	});
 });
