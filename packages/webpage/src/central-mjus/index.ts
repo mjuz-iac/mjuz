@@ -7,7 +7,7 @@ import {
 	sigint,
 	sigterm,
 } from '@mjus/core';
-import { at, changes, sinkBehavior } from '@funkia/hareactive';
+import { at, changes, combine, sinkBehavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 import { PulumiFn } from '@pulumi/pulumi/x/automation';
 import { isDeepStrictEqual } from 'util';
@@ -88,8 +88,10 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-runDeployment(
-	initStack,
-	operations(programState.map(program)),
-	nextAction(changes(programState, isDeepStrictEqual), sigint(), sigterm())
+runDeployment(initStack, operations(programState.map(program)), (offerUpdates) =>
+	nextAction(
+		combine(offerUpdates, changes(programState, isDeepStrictEqual).mapTo(undefined)),
+		sigint(),
+		sigterm()
+	)
 );

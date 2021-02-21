@@ -1,0 +1,6 @@
+{
+  "name": "@mjus/core/resources",
+  "private": true,
+  "main": "../dist/src/resources/index.js",
+  "types": "../dist/src/resources/index.d.ts"
+}

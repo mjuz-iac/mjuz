@@ -10,7 +10,8 @@
     "test": "test"
   },
   "files": [
-    "dist/src"
+    "dist/src",
+    "resources"
   ],
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",

@@ -2,14 +2,13 @@ import {
 	emptyProgram,
 	getStack,
 	nextAction,
-	Offer,
 	operations,
-	RemoteConnection,
 	runDeployment,
 	sigint,
 	sigterm,
 } from '@mjus/core';
-import { Behavior, empty } from '@funkia/hareactive';
+import { Offer, RemoteConnection } from '@mjus/core/resources';
+import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 
 const program = async () => {
@@ -41,7 +40,7 @@ const program = async () => {
 		policy: bucket.arn.apply(publicReadPolicyForBucket),
 	});
 
-	const contentManager = new RemoteConnection('content', {});
+	const contentManager = new RemoteConnection('content', { port: 19954 });
 	new Offer(contentManager, 'bucket', bucket);
 
 	// Export the Internet address for the service.
@@ -61,4 +60,9 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-runDeployment(initStack, operations(Behavior.of(program)), nextAction(empty, sigint(), sigterm()));
+runDeployment(
+	initStack,
+	operations(Behavior.of(program)),
+	(offerUpdates) => nextAction(offerUpdates, sigint(), sigterm()),
+	{ deploymentName: 'bucket', resourcesPort: 19951, deploymentPort: 19952 }
+);

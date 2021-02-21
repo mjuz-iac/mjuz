@@ -7,7 +7,7 @@ import {
 	sigint,
 	sigterm,
 } from '@mjus/core';
-import { Behavior, empty } from '@funkia/hareactive';
+import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 import * as pulumi from '@pulumi/pulumi';
 
@@ -50,4 +50,6 @@ const initStack = () =>
 		}
 	);
 
-runDeployment(initStack, operations(Behavior.of(program)), nextAction(empty, sigint(), sigterm()));
+runDeployment(initStack, operations(Behavior.of(program)), (offerUpdates) =>
+	nextAction(offerUpdates, sigint(), sigterm())
+);

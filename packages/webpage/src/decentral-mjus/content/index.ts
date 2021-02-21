@@ -3,17 +3,16 @@ import {
 	getStack,
 	nextAction,
 	operations,
-	RemoteConnection,
 	runDeployment,
 	sigint,
 	sigterm,
-	Wish,
 } from '@mjus/core';
-import { Behavior, empty } from '@funkia/hareactive';
+import { RemoteConnection, Wish } from '@mjus/core/resources';
+import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 
 const program = async () => {
-	const bucketManager = new RemoteConnection('bucket', {});
+	const bucketManager = new RemoteConnection('bucket', { port: 19952 });
 	const bucketWish = new Wish<aws.s3.Bucket>(bucketManager, 'bucket');
 
 	const content = `<html>
@@ -50,4 +49,9 @@ const initStack = () =>
 		{ 'aws:region': { value: 'us-east-1' } }
 	);
 
-runDeployment(initStack, operations(Behavior.of(program)), nextAction(empty, sigint(), sigterm()));
+runDeployment(
+	initStack,
+	operations(Behavior.of(program)),
+	(offerUpdates) => nextAction(offerUpdates, sigint(), sigterm()),
+	{ deploymentName: 'content', resourcesPort: 19953, deploymentPort: 19954 }
+);
