@@ -1,20 +1,14 @@
 import { IO, runIO } from '@funkia/io';
 import { Behavior, Future } from '@funkia/hareactive';
-import {
-	Action,
-	DeploymentService,
-	newLogger,
-	reactionLoop,
-	ResourcesService,
-	startResourcesService,
-} from '.';
+import { Action, newLogger, reactionLoop, startResourcesService } from '.';
 import * as yargs from 'yargs';
 import { startDeploymentService } from './deployment-service';
+import { startOffersRuntime } from './runtime-offers';
 
 const logger = newLogger('runtime');
 
 type RuntimeOptions = {
-	name: string;
+	deploymentName: string;
 	deploymentHost: string;
 	deploymentPort: number;
 	resourcesHost: string;
@@ -22,9 +16,9 @@ type RuntimeOptions = {
 };
 const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 	yargs.options({
-		name: {
-			alias: 'name',
-			default: defaults.name || 'deployment',
+		deploymentName: {
+			alias: 'n',
+			default: defaults.deploymentName || 'deployment',
 			description: 'Name of the deployment (used for identification with other deployments)',
 		},
 		deploymentHost: {
@@ -56,19 +50,20 @@ export const runDeployment = <S>(
 	options?: Partial<RuntimeOptions>,
 	disableExit = false
 ): Promise<S> => {
-	const opts = getOptions(options || {});
-	return Promise.all<ResourcesService, DeploymentService>([
-		startResourcesService(opts.resourcesHost, opts.resourcesPort),
-		startDeploymentService(opts.deploymentHost, opts.deploymentPort),
-	])
-		.then((res) => {
-			const [resourcesService, deploymentService] = res;
-			return runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
-				Promise.all([resourcesService.stop(), deploymentService.stop()]).then(
-					() => finalStack
-				)
-			);
-		})
+	const setup = async () => {
+		const opts = getOptions(options || {});
+		const [resourcesService, deploymentService] = await Promise.all([
+			startResourcesService(opts.resourcesHost, opts.resourcesPort),
+			startDeploymentService(opts.deploymentHost, opts.deploymentPort),
+		]);
+		const offersRuntime = await startOffersRuntime(resourcesService, opts.deploymentName);
+
+		const finalStack = await runIO(reactionLoop(initOperation, operations, nextAction));
+		await Promise.all([resourcesService.stop(), deploymentService.stop(), offersRuntime.stop]);
+		return finalStack;
+	};
+
+	return setup()
 		.catch((err) => {
 			logger.error(err, 'Deployment error');
 			process.exit(1);
