@@ -6,8 +6,18 @@ import * as rpc from '@mjus/grpc-protos';
 import { newLogger } from './logging';
 import { startService } from './service-utils';
 import { Typify } from './type-utils';
+import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 const logger = newLogger('resources service');
+
+export const toRpcWish = (wish: Wish): rpc.Wish => {
+	const w = new rpc.Wish()
+		.setTargetid(wish.targetid)
+		.setName(wish.name)
+		.setIswithdrawn(wish.iswithdrawn);
+	if (wish.offer) w.setOffer(Value.fromJavaScript(wish.offer));
+	return w;
+};
 
 let resourcesClientHost: string;
 let resourcesClientPort: number;
@@ -50,7 +60,7 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		): void {
 			const remote = call.request as rpc.Remote;
 			logger.info(remote, 'Remote created');
-			remoteCreated.push(remote);
+			remoteCreated.push(remote.toObject());
 			cb(null, new Empty());
 		}
 
@@ -60,45 +70,43 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		): void {
 			const remote = call.request as rpc.Remote;
 			logger.info(remote, 'Remote deleted');
-			remoteDeleted.push(remote);
+			remoteDeleted.push(remote.toObject());
 			cb(null, new Empty());
 		}
 
 		updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
 			logger.info(offer, 'Offer updated');
-			offerUpdated.push(offer);
+			offerUpdated.push(offer.toObject());
 			cb(null, new Empty());
 		}
 
 		deleteOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
 			logger.info(offer, 'Withdrawing offer');
-			offerWithdrawn.push([offer, (error) => cb(error, new Empty())]);
+			offerWithdrawn.push([offer.toObject(), (error) => cb(error, new Empty())]);
 		}
 
 		getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Polling remote offer');
-			wishPolled.push([wish, cb]);
+			wishPolled.push([wish.toObject(), cb]);
 		}
 
 		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Wish deleted');
-			wishDeleted.push(wish);
+			wishDeleted.push(wish.toObject());
 			cb(null, new Empty());
 		}
 	}
 
-	const remoteCreated = sinkStream<rpc.Remote>();
-	const remoteDeleted = sinkStream<rpc.Remote>();
-	const offerUpdated = sinkStream<rpc.Offer>();
-	const offerWithdrawn = sinkStream<[rpc.Offer, (error: Error | null) => void]>();
-	const wishPolled = sinkStream<
-		[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]
-	>();
-	const wishDeleted = sinkStream<rpc.Wish>();
+	const remoteCreated = sinkStream<Remote>();
+	const remoteDeleted = sinkStream<Remote>();
+	const offerUpdated = sinkStream<Offer>();
+	const offerWithdrawn = sinkStream<[Offer, (error: Error | null) => void]>();
+	const wishPolled = sinkStream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>();
+	const wishDeleted = sinkStream<Wish>();
 
 	return {
 		server: new ResourcesServer(),
@@ -111,13 +119,16 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	};
 };
 
+export type Remote = rpc.Remote.AsObject;
+export type Offer = rpc.Offer.AsObject;
+export type Wish = rpc.Wish.AsObject;
 export type ResourcesService = {
-	remoteCreated: Stream<rpc.Remote>;
-	remoteDeleted: Stream<rpc.Remote>;
-	offerUpdated: Stream<rpc.Offer>;
-	offerWithdrawn: Stream<[rpc.Offer, (error: Error | null) => void]>;
-	wishPolled: Stream<[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
-	wishDeleted: Stream<rpc.Wish>;
+	remoteCreated: Stream<Remote>;
+	remoteDeleted: Stream<Remote>;
+	offerUpdated: Stream<Offer>;
+	offerWithdrawn: Stream<[Offer, (error: Error | null) => void]>;
+	wishPolled: Stream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
+	wishDeleted: Stream<Wish>;
 	stop: () => Promise<void>;
 };
 export const startResourcesService = async (

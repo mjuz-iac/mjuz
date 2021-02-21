@@ -24,24 +24,73 @@ describe('resources service', () => {
 		// Intended to be empty
 	});
 
-	test('create remote', () =>
-		expect(createRemote(new rpc.Remote())).resolves.toEqual(new Empty()));
+	test('create remote', async () => {
+		const remote = new rpc.Remote();
+		const received = new Promise((resolve) =>
+			resourcesService.remoteCreated.subscribe((receivedRemote) =>
+				resolve(expect(receivedRemote).toEqual(remote.toObject()))
+			)
+		);
+		await expect(createRemote(remote)).resolves.toEqual(new Empty());
+		await received;
+	});
 
-	test('delete remote', () =>
-		expect(deleteRemote(new rpc.Remote())).resolves.toEqual(new Empty()));
+	test('delete remote', async () => {
+		const remote = new rpc.Remote();
+		const received = new Promise((resolve) =>
+			resourcesService.remoteDeleted.subscribe((receivedRemote) =>
+				resolve(expect(receivedRemote).toEqual(remote.toObject()))
+			)
+		);
+		await expect(deleteRemote(remote)).resolves.toEqual(new Empty());
+		await received;
+	});
 
-	test('update offer', () => expect(updateOffer(new rpc.Offer())).resolves.toEqual(new Empty()));
+	test('update offer', async () => {
+		const offer = new rpc.Offer();
+		const received = new Promise((resolve) =>
+			resourcesService.offerUpdated.subscribe((receivedOffer) =>
+				resolve(expect(receivedOffer).toEqual(offer.toObject()))
+			)
+		);
+		await expect(updateOffer(offer)).resolves.toEqual(new Empty());
+		await received;
+	});
 
 	test('delete offer', async () => {
-		resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
-		await expect(deleteOffer(new rpc.Offer())).resolves.toEqual(new Empty());
+		const offer = new rpc.Offer();
+		const received = new Promise((resolve) =>
+			resourcesService.offerWithdrawn.subscribe((t) => {
+				const [receivedOffer, cb] = t;
+				resolve(expect(receivedOffer).toEqual(offer.toObject()));
+				cb(null);
+			})
+		);
+		await expect(deleteOffer(offer)).resolves.toEqual(new Empty());
+		await received;
 	});
 
 	test('get wish', async () => {
-		resourcesService.wishPolled.subscribe((p) => p[1](null, p[0]));
-		await expect(getWish(new rpc.Wish())).resolves.toEqual(new Empty());
+		const wish = new rpc.Wish();
+		const received = new Promise((resolve) =>
+			resourcesService.wishPolled.subscribe((t) => {
+				const [receivedWish, cb] = t;
+				resolve(expect(receivedWish).toEqual(wish.toObject()));
+				cb(null, wish);
+			})
+		);
+		await expect(getWish(wish).then((w) => w.toObject())).resolves.toEqual(wish.toObject());
+		await received;
 	});
 
-	test('get delete wish', () =>
-		expect(wishDeleted(new rpc.Wish())).resolves.toEqual(new Empty()));
+	test('delete wish', async () => {
+		const wish = new rpc.Wish();
+		const received = new Promise((resolve) =>
+			resourcesService.wishDeleted.subscribe((receivedWish) =>
+				resolve(expect(receivedWish).toEqual(wish.toObject()))
+			)
+		);
+		await expect(wishDeleted(wish)).resolves.toEqual(new Empty());
+		await received;
+	});
 });
