@@ -1,6 +1,13 @@
 import { IO, runIO } from '@funkia/io';
 import { Behavior, Future } from '@funkia/hareactive';
-import { Action, newLogger, reactionLoop, ResourcesService, startResourcesService } from '.';
+import {
+	Action,
+	DeploymentService,
+	newLogger,
+	reactionLoop,
+	ResourcesService,
+	startResourcesService,
+} from '.';
 import * as yargs from 'yargs';
 import { startDeploymentService } from './deployment-service';
 
@@ -50,14 +57,14 @@ export const runDeployment = <S>(
 	disableExit = false
 ): Promise<S> => {
 	const opts = getOptions(options || {});
-	return Promise.all<ResourcesService, () => Promise<void>>([
+	return Promise.all<ResourcesService, DeploymentService>([
 		startResourcesService(opts.resourcesHost, opts.resourcesPort),
 		startDeploymentService(opts.deploymentHost, opts.deploymentPort),
 	])
 		.then((res) => {
-			const [resourcesService, stopDeploymentService] = res;
+			const [resourcesService, deploymentService] = res;
 			return runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
-				Promise.all([resourcesService.stop(), stopDeploymentService()]).then(
+				Promise.all([resourcesService.stop(), deploymentService.stop()]).then(
 					() => finalStack
 				)
 			);
