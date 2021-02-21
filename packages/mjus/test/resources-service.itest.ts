@@ -13,14 +13,11 @@ import {
 
 describe('resources service', () => {
 	let resourcesService: ResourcesService;
-	beforeEach(() => {
-		return startResourcesService('127.0.0.1', 19951).then((service) => {
-			resourcesService = service;
-			return Promise.resolve();
-		});
+	beforeEach(async () => {
+		resourcesService = await startResourcesService('127.0.0.1', 19951);
 	});
-	afterEach(() => {
-		return resourcesService.stop();
+	afterEach(async () => {
+		await resourcesService.stop();
 	});
 
 	test('start and stop', () => {
@@ -35,14 +32,14 @@ describe('resources service', () => {
 
 	test('update offer', () => expect(updateOffer(new rpc.Offer())).resolves.toEqual(new Empty()));
 
-	test('delete offer', () => {
+	test('delete offer', async () => {
 		resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
-		return expect(deleteOffer(new rpc.Offer())).resolves.toEqual(new Empty());
+		await expect(deleteOffer(new rpc.Offer())).resolves.toEqual(new Empty());
 	});
 
-	test('get wish', () => {
+	test('get wish', async () => {
 		resourcesService.wishPolled.subscribe((p) => p[1](null, p[0]));
-		return expect(getWish(new rpc.Wish())).resolves.toEqual(new Empty());
+		await expect(getWish(new rpc.Wish())).resolves.toEqual(new Empty());
 	});
 
 	test('get delete wish', () =>

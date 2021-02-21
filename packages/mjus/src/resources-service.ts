@@ -40,17 +40,7 @@ export const getWish = (wish: rpc.Wish): Promise<rpc.Wish> =>
 export const wishDeleted = (wish: rpc.Wish): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.wishDeleted(wish, cb));
 
-export type ResourcesService = {
-	server: rpc.IResourcesServer;
-	remoteCreated: Stream<rpc.Remote>;
-	remoteDeleted: Stream<rpc.Remote>;
-	offerUpdated: Stream<rpc.Offer>;
-	offerWithdrawn: Stream<[rpc.Offer, (error: Error | null) => void]>;
-	wishPolled: Stream<[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
-	wishDeleted: Stream<rpc.Wish>;
-	stop: () => Promise<void>;
-};
-const resourceService = (): Omit<ResourcesService, 'stop'> => {
+const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IResourcesServer } => {
 	class ResourcesServer implements rpc.IResourcesServer {
 		[name: string]: grpc.UntypedHandleCall;
 
@@ -121,21 +111,32 @@ const resourceService = (): Omit<ResourcesService, 'stop'> => {
 	};
 };
 
-export const startResourcesService = (host: string, port: number): Promise<ResourcesService> => {
+export type ResourcesService = {
+	remoteCreated: Stream<rpc.Remote>;
+	remoteDeleted: Stream<rpc.Remote>;
+	offerUpdated: Stream<rpc.Offer>;
+	offerWithdrawn: Stream<[rpc.Offer, (error: Error | null) => void]>;
+	wishPolled: Stream<[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
+	wishDeleted: Stream<rpc.Wish>;
+	stop: () => Promise<void>;
+};
+export const startResourcesService = async (
+	host: string,
+	port: number
+): Promise<ResourcesService> => {
 	resourcesClientHost = host;
 	resourcesClientPort = port;
 	const service = resourceService();
-	return startService(
+	const stopService = await startService(
 		'resources',
 		rpc.ResourcesService as Typify<rpc.IResourcesService>,
 		service.server,
 		host,
 		port,
 		logger
-	).then((stopService) => {
-		return {
-			...service,
-			stop: stopService,
-		};
-	});
+	);
+	return {
+		...service,
+		stop: stopService,
+	};
 };
