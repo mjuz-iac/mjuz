@@ -19,15 +19,15 @@ import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 const logger = newLogger('offers runtime');
 
 type Remotes = Record<string, rpc.DeploymentClient>;
-const accumulatedRemotes = (
+const accumRemotes = (
 	remoteCreated: Stream<Remote>,
 	remoteDeleted: Stream<Remote>
 ): Behavior<Behavior<Remotes>> =>
-	accumFrom<['created' | 'deleted', Remote], Record<string, rpc.DeploymentClient>>(
+	accumFrom<['add' | 'remove', Remote], Record<string, rpc.DeploymentClient>>(
 		(event, remotes) => {
 			const [change, remote] = event;
 			const update = { ...remotes };
-			if (change === 'created')
+			if (change === 'add')
 				if (remote.id in update)
 					logger.warn(
 						`Remote ${remote.id} created even though it was already registered`
@@ -49,8 +49,32 @@ const accumulatedRemotes = (
 		},
 		{},
 		combine(
-			remoteCreated.map<['created' | 'deleted', Remote]>((remote) => ['created', remote]),
-			remoteDeleted.map<['created' | 'deleted', Remote]>((remote) => ['deleted', remote])
+			remoteCreated.map<['add' | 'remove', Remote]>((remote) => ['add', remote]),
+			remoteDeleted.map<['add' | 'remove', Remote]>((remote) => ['remove', remote])
+		)
+	);
+
+type Offers = Record<string, Offer<unknown>>;
+const accumOutboundOffers = (
+	offerUpdate: Stream<Offer<unknown>>,
+	offerWithdrawal: Stream<Offer<unknown>>
+): Behavior<Behavior<Offers>> =>
+	accumFrom<['upsert' | 'remove', Offer<unknown>], Record<string, Offer<unknown>>>(
+		(event, offers) => {
+			const [change, offer] = event;
+			const update = { ...offers };
+			const offerId = `${offer.beneficiaryid}:${offer.name}`;
+
+			if (change === 'upsert') update[offerId] = offer;
+			else if (!(offerId in update)) logger.warn(`Withdrawing unknown offer ${offerId}`);
+			else delete update[offerId];
+
+			return update;
+		},
+		{},
+		combine(
+			offerUpdate.map<['upsert' | 'remove', Offer<unknown>]>((offer) => ['upsert', offer]),
+			offerWithdrawal.map<['upsert' | 'remove', Offer<unknown>]>((offer) => ['remove', offer])
 		)
 	);
 
@@ -100,14 +124,22 @@ export type OffersRuntime = {
 	stop: () => Promise<void>;
 };
 export const startOffersRuntime = async (
-	resourcesService: ResourcesService,
+	resources: ResourcesService,
 	deploymentName: string
 ): Promise<OffersRuntime> => {
 	const remotes: Behavior<Remotes> = runNow(
-		sample(accumulatedRemotes(resourcesService.remoteCreated, resourcesService.remoteDeleted))
+		sample(accumRemotes(resources.remoteCreated, resources.remoteDeleted))
+	);
+	const outboundOffers: Behavior<Offers> = runNow(
+		sample(
+			accumOutboundOffers(
+				resources.offerUpdated,
+				resources.offerWithdrawn.map((t) => t[0])
+			)
+		)
 	);
 	const offersDirectForward = runNow(
-		performStream(directOfferForward(resourcesService.offerUpdated, remotes, deploymentName))
+		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
 	);
 	offersDirectForward.activate(tick());
 

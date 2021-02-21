@@ -60,7 +60,7 @@ describe('offers runtime', () => {
 		resourcesService.offerUpdated.push({
 			beneficiaryid: 'no-remote',
 			name: 'test',
-			offer: { a: ['b', 'd'] },
+			offer: { a: ['b', 'c'] },
 		});
 		resourcesService.offerUpdated.push({
 			beneficiaryid: 'remote',
