@@ -48,9 +48,9 @@ export type ResourcesService = {
 	offerWithdrawn: Stream<[rpc.Offer, (error: Error | null) => void]>;
 	wishPolled: Stream<[rpc.Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
 	wishDeleted: Stream<rpc.Wish>;
-	stopService: () => Promise<void>;
+	stop: () => Promise<void>;
 };
-const resourceService = (): Omit<ResourcesService, 'stopService'> => {
+const resourceService = (): Omit<ResourcesService, 'stop'> => {
 	class ResourcesServer implements rpc.IResourcesServer {
 		[name: string]: grpc.UntypedHandleCall;
 
@@ -135,7 +135,7 @@ export const startResourcesService = (host: string, port: number): Promise<Resou
 	).then((stopService) => {
 		return {
 			...service,
-			stopService,
+			stop: stopService,
 		};
 	});
 };

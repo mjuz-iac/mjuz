@@ -1,5 +1,5 @@
 import { LocalWorkspace, PulumiFn, Stack, UpResult } from '@pulumi/pulumi/x/automation';
-import { emptyProgram, startResourcesService } from '../../src';
+import { emptyProgram, ResourcesService, startResourcesService } from '../../src';
 
 /* eslint-disable no-console */
 export const stack = (): Promise<Stack> =>
@@ -24,24 +24,26 @@ export const cleanupStack = (): Promise<void> =>
 export const baseResourceTest = (
 	testName: string,
 	program: PulumiFn,
-	checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void
+	checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void,
+	setup: (resourcesService: ResourcesService) => Promise<void> = () => Promise.resolve()
 ): Promise<void> =>
-	multiStepResourceTest(testName, [{ program: program, checkResult: checkResult }]);
+	multiStepResourceTest(testName, [{ program: program, checkResult: checkResult }], setup);
 
 export const multiStepResourceTest = (
 	testName: string,
 	steps: {
 		program: PulumiFn;
 		checkResult: (res: UpResult, resolve: () => void, reject: (err: string) => void) => void;
-	}[]
+	}[],
+	setup: (resourcesService: ResourcesService) => Promise<void> = () => Promise.resolve()
 ): Promise<void> => {
 	console.info('Running test: ' + testName);
 	return startResourcesService('127.0.0.1', 19951)
 		.then((resourcesService) =>
 			stack()
-				.then((stack) => runSteps(stack, steps))
+				.then((stack) => setup(resourcesService).then(() => runSteps(stack, steps)))
 				.finally(cleanupStack)
-				.finally(() => resourcesService.stopService())
+				.finally(() => resourcesService.stop())
 		)
 		.then(() => console.info('Completed test: ' + testName));
 };

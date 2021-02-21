@@ -57,7 +57,7 @@ export const runDeployment = <S>(
 		.then((res) => {
 			const [resourcesService, stopDeploymentService] = res;
 			return runIO(reactionLoop(initOperation, operations, nextAction)).then((finalStack) =>
-				Promise.all([resourcesService.stopService(), stopDeploymentService()]).then(
+				Promise.all([resourcesService.stop(), stopDeploymentService()]).then(
 					() => finalStack
 				)
 			);

@@ -30,6 +30,9 @@ runTests(
 				'ect::pulumi-nodejs:dynamic:Resource::directlyNamedTestWish"},"secret":false}}'
 				? resolve()
 				: reject('unsatisfied wish both constructors: unexpected outputs');
+		},
+		async (resourcesService) => {
+			resourcesService.wishPolled.subscribe((p) => p[1](null, p[0]));
 		}
 	)
 );

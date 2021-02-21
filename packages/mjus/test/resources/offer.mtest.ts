@@ -32,6 +32,9 @@ runTests(
 			)
 				? resolve()
 				: reject('void offer: unexpected output');
+		},
+		async (resourcesService) => {
+			resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
 		}
 	)
 		.then(() => {
@@ -39,55 +42,61 @@ runTests(
 			// console.log(remoteConnections);
 		})
 		.then(() =>
-			multiStepResourceTest('offer update', [
-				{
-					program: async () => {
-						const r = new RemoteConnection('testRemote', {});
-						const o = new Offer('testOfferName', {
-							beneficiary: r,
-							offerName: 'testOffer',
-							offer: {
-								myArray: [3.4, 'test'],
-								isTrue: true,
-							},
-						});
-						return { o };
+			multiStepResourceTest(
+				'offer update',
+				[
+					{
+						program: async () => {
+							const r = new RemoteConnection('testRemote', {});
+							const o = new Offer('testOfferName', {
+								beneficiary: r,
+								offerName: 'testOffer',
+								offer: {
+									myArray: [3.4, 'test'],
+									isTrue: true,
+								},
+							});
+							return { o };
+						},
+						checkResult: (upResult, resolve, reject) => {
+							console.log('Remote Connections');
+							// console.log(remoteConnections);
+							console.log('Output:');
+							console.log(JSON.stringify(upResult.outputs));
+							JSON.stringify(upResult.outputs) ===
+							'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":true,"myArray":[3.4,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
+								? resolve()
+								: reject('offer udpate: unexpected output');
+						},
 					},
-					checkResult: (upResult, resolve, reject) => {
-						console.log('Remote Connections');
-						// console.log(remoteConnections);
-						console.log('Output:');
-						console.log(JSON.stringify(upResult.outputs));
-						JSON.stringify(upResult.outputs) ===
-						'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":true,"myArray":[3.4,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
-							? resolve()
-							: reject('offer udpate: unexpected output');
+					{
+						program: async () => {
+							const r = new RemoteConnection('testRemote', {});
+							const o = new Offer('testOfferName', {
+								beneficiary: r,
+								offerName: 'testOffer',
+								offer: {
+									myArray: [1.2, 'test'],
+									isTrue: false,
+								},
+							});
+							return { o };
+						},
+						checkResult: (upResult, resolve, reject) => {
+							console.log('Remote Connections');
+							// console.log(remoteConnections);
+							console.log('Output:');
+							console.log(JSON.stringify(upResult.outputs));
+							JSON.stringify(upResult.outputs) ===
+							'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
+								? resolve()
+								: reject('offer udpate: unexpected output');
+						},
 					},
-				},
-				{
-					program: async () => {
-						const r = new RemoteConnection('testRemote', {});
-						const o = new Offer('testOfferName', {
-							beneficiary: r,
-							offerName: 'testOffer',
-							offer: {
-								myArray: [1.2, 'test'],
-								isTrue: false,
-							},
-						});
-						return { o };
-					},
-					checkResult: (upResult, resolve, reject) => {
-						console.log('Remote Connections');
-						// console.log(remoteConnections);
-						console.log('Output:');
-						console.log(JSON.stringify(upResult.outputs));
-						JSON.stringify(upResult.outputs) ===
-						'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
-							? resolve()
-							: reject('offer udpate: unexpected output');
-					},
-				},
-			])
+				],
+				async (resourcesService) => {
+					resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
+				}
+			)
 		)
 );
