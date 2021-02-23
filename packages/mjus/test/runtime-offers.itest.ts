@@ -3,18 +3,19 @@ import {
 	DeploymentOffer,
 	DeploymentService,
 	Offer,
+	OffersRuntime,
 	Remote,
 	ResourcesService,
 	startDeploymentService,
+	startOffersRuntime,
 	Wish,
 } from '../src';
-import { OffersRuntime, startOffersRuntime } from '../src/runtime-offers';
 import * as rpc from '@mjus/grpc-protos';
 
 describe('offers runtime', () => {
 	let deploymentService: DeploymentService & {
-		offers: SinkStream<DeploymentOffer<unknown>>;
-		releaseOffers: SinkStream<[DeploymentOffer<unknown>, () => void]>;
+		offerUpdated: SinkStream<DeploymentOffer<unknown>>;
+		offerWithdrawn: SinkStream<[DeploymentOffer<unknown>, () => void]>;
 	};
 	let resourcesService: ResourcesService & {
 		remoteCreated: SinkStream<Remote>;
@@ -28,8 +29,8 @@ describe('offers runtime', () => {
 	let remoteDeploymentService: DeploymentService;
 	beforeEach(async () => {
 		deploymentService = {
-			offers: sinkStream<DeploymentOffer<unknown>>(),
-			releaseOffers: sinkStream<[DeploymentOffer<unknown>, () => void]>(),
+			offerUpdated: sinkStream<DeploymentOffer<unknown>>(),
+			offerWithdrawn: sinkStream<[DeploymentOffer<unknown>, () => void]>(),
 			stop: async () => {
 				// Intended to be empty
 			},
@@ -61,7 +62,7 @@ describe('offers runtime', () => {
 
 	test('directly forward offer', async () => {
 		const receivedOffer = new Promise<void>((resolve) =>
-			remoteDeploymentService.offers.subscribe((receivedOffer) =>
+			remoteDeploymentService.offerUpdated.subscribe((receivedOffer) =>
 				resolve(
 					expect(receivedOffer).toEqual({
 						origin: 'test-deployment',
@@ -102,10 +103,10 @@ describe('offers runtime', () => {
 			});
 		});
 
-		deploymentService.offers.push({ origin: 'a', name: 'b', offer: 'c' });
+		deploymentService.offerUpdated.push({ origin: 'a', name: 'b', offer: 'c' });
 		// eslint-disable-next-line @typescript-eslint/no-empty-function
-		deploymentService.releaseOffers.push([{ origin: 'a', name: 'b', offer: 'c' }, () => {}]);
-		deploymentService.offers.push({ origin: 'a', name: 'b', offer: 'c' });
+		deploymentService.offerWithdrawn.push([{ origin: 'a', name: 'b', offer: 'c' }, () => {}]);
+		deploymentService.offerUpdated.push({ origin: 'a', name: 'b', offer: 'c' });
 
 		await threeUpdates;
 	});

@@ -48,15 +48,15 @@ const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 
 	return {
 		server: new DeploymentServer(),
-		offers,
-		releaseOffers,
+		offerUpdated: offers,
+		offerWithdrawn: releaseOffers,
 	};
 };
 
-export type DeploymentOffer<O> = Omit<rpc.DeploymentOffer.AsObject, 'offer'> & { offer: O };
+export type DeploymentOffer<O> = Omit<rpc.DeploymentOffer.AsObject, 'offer'> & { offer?: O };
 export type DeploymentService = {
-	offers: Stream<DeploymentOffer<unknown>>;
-	releaseOffers: Stream<[DeploymentOffer<unknown>, () => void]>;
+	offerUpdated: Stream<DeploymentOffer<unknown>>;
+	offerWithdrawn: Stream<[DeploymentOffer<unknown>, () => void]>;
 	stop: () => Promise<void>;
 };
 export const startDeploymentService = async (

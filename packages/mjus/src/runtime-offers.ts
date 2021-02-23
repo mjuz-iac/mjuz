@@ -12,10 +12,10 @@ import {
 import { callP, catchE, IO } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
-import { Offer, Remote, ResourcesService } from './resources-service';
+import { Offer, Remote, ResourcesService, Wish } from './resources-service';
 import { newLogger } from './logging';
 import { Value } from 'google-protobuf/google/protobuf/struct_pb';
-import { DeploymentService } from './deployment-service';
+import { DeploymentOffer, DeploymentService } from './deployment-service';
 
 const logger = newLogger('offers runtime');
 
@@ -24,7 +24,7 @@ const accumRemotes = (
 	remoteCreated: Stream<Remote>,
 	remoteDeleted: Stream<Remote>
 ): Behavior<Behavior<Remotes>> =>
-	accumFrom<['add' | 'remove', Remote], Record<string, rpc.DeploymentClient>>(
+	accumFrom<['add' | 'remove', Remote], Remotes>(
 		(event, remotes) => {
 			const [change, remote] = event;
 			const update = { ...remotes };
@@ -60,7 +60,7 @@ const accumOutboundOffers = (
 	offerUpdate: Stream<Offer<unknown>>,
 	offerWithdrawal: Stream<Offer<unknown>>
 ): Behavior<Behavior<Offers>> =>
-	accumFrom<['upsert' | 'remove', Offer<unknown>], Record<string, Offer<unknown>>>(
+	accumFrom<['upsert' | 'remove', Offer<unknown>], Offers>(
 		(event, offers) => {
 			const [change, offer] = event;
 			const update = { ...offers };
@@ -79,7 +79,89 @@ const accumOutboundOffers = (
 		)
 	);
 
-const toDeploymentOffer = <O>(offer: Offer<O>, deploymentName: string): rpc.DeploymentOffer =>
+/**
+ * Protocol: Offer from remote updates the offer and resets the withdrawn flag. When a deployment reads the offer, it
+ * sets the locked flag. Withdrawal from the offering deployment removes the offer, if it was not locked. If it was
+ * locked, withdrawal sets the withdrawn flag. The deployment undeploys wishes to a withdrawn offer and confirms the
+ * undeployment with its release. On release, the offer is removed, if the withdrawn flag is set.
+ *
+ * Any withdrawal should be delayed until the first deployment round completed to ensure all locked offers exist in the
+ * state. Otherwise withdrawals may get confirmed (the offer released) even though the corresponding wish is still
+ * deployed.
+ *
+ * @param offerUpdate
+ * @param offerLocked
+ * @param offerWithdrawal
+ * @param offerReleased
+ */
+const accumInboundOffers = (
+	offerUpdate: Stream<DeploymentOffer<unknown>>,
+	offerLocked: Stream<DeploymentOffer<unknown>>,
+	offerWithdrawal: Stream<DeploymentOffer<unknown>>,
+	offerReleased: Stream<DeploymentOffer<unknown>>
+): Behavior<Behavior<InboundOffers>> =>
+	accumFrom<InboundOfferEvent<unknown>, InboundOffers>(
+		(event, offers) => {
+			const [change, offer] = event;
+			const update = { ...offers };
+			const offerId = `${offer.origin}:${offer.name}`;
+
+			switch (change) {
+				case 'upsert':
+					if (offerId in update) {
+						update[offerId].withdrawn = false;
+						update[offerId].offer = offer;
+					} else {
+						update[offerId] = {
+							locked: false,
+							withdrawn: false,
+							offer: offer,
+						};
+					}
+					break;
+				case 'lock':
+					if (offerId in update) update[offerId].locked = true;
+					// Case: after restart the offer was not renewed from the offering side, but the corresponding wish is already deployed
+					else
+						update[offerId] = {
+							locked: true,
+							withdrawn: false,
+						};
+					break;
+				case 'withdraw':
+					if (offerId in update)
+						if (update[offerId].locked) update[offerId].withdrawn = true;
+						else delete update[offerId];
+					break;
+				case 'release':
+					if (offerId in update)
+						if (update[offerId].withdrawn) delete update[offerId];
+						else
+							logger.warn(
+								`Released offer ${offerId} that is not withdrawn (anymore?)`
+							);
+					else logger.warn(`Released unknown offer ${offerId}`);
+					break;
+			}
+			return update;
+		},
+		{},
+		combine(
+			offerUpdate.map<InboundOfferEvent<unknown>>((offer) => ['upsert', offer]),
+			offerLocked.map<InboundOfferEvent<unknown>>((offer) => ['lock', offer]),
+			offerWithdrawal.map<InboundOfferEvent<unknown>>((offer) => ['withdraw', offer]),
+			offerReleased.map<InboundOfferEvent<unknown>>((offer) => ['release', offer])
+		)
+	);
+type InboundOfferEvent<O> = ['upsert' | 'lock' | 'withdraw' | 'release', DeploymentOffer<O>];
+type InboundOffers = Record<string, InboundOffer<unknown>>;
+type InboundOffer<O> = {
+	locked: boolean;
+	withdrawn: boolean;
+	offer?: DeploymentOffer<O>;
+};
+
+const toRpcDeploymentOffer = <O>(offer: Offer<O>, deploymentName: string): rpc.DeploymentOffer =>
 	new rpc.DeploymentOffer()
 		.setOrigin(deploymentName)
 		.setName(offer.name)
@@ -101,7 +183,7 @@ const directOfferForward = (
 				resolve: (offer: Offer<unknown>) => void,
 				reject: (err: unknown) => void
 			) =>
-				remote.offer(toDeploymentOffer(offer, deploymentName), (error) =>
+				remote.offer(toRpcDeploymentOffer(offer, deploymentName), (error) =>
 					error ? reject(error) : resolve(offer)
 				);
 			return callP(() => new Promise(sendOffer));
@@ -120,6 +202,13 @@ const directOfferForward = (
 				sentOffer
 			)
 		);
+
+const toDeploymentOffer = <O>(wish: Wish): DeploymentOffer<O> => {
+	return {
+		origin: wish.targetid,
+		name: wish.name,
+	};
+};
 
 export type OffersRuntime = {
 	inboundOfferUpdates: Stream<void>;
@@ -141,6 +230,16 @@ export const startOffersRuntime = async (
 			)
 		)
 	);
+	const inboundOffers: Behavior<InboundOffers> = runNow(
+		sample(
+			accumInboundOffers(
+				deployment.offerUpdated,
+				resources.wishPolled.map((t) => toDeploymentOffer(t[0])),
+				deployment.offerWithdrawn.map((t) => t[0]),
+				resources.wishDeleted.map(toDeploymentOffer)
+			)
+		)
+	);
 
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
@@ -148,8 +247,8 @@ export const startOffersRuntime = async (
 	offersDirectForward.activate(tick());
 
 	const inboundOfferChanges: Stream<void> = combine(
-		deployment.offers.mapTo(undefined),
-		deployment.releaseOffers.mapTo(undefined)
+		deployment.offerUpdated.mapTo(undefined),
+		deployment.offerWithdrawn.mapTo(undefined)
 	);
 
 	const stop = async () => {

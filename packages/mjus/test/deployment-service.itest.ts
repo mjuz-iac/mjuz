@@ -25,7 +25,7 @@ describe('deployment service', () => {
 	test('offer', async () => {
 		const offer = new rpc.DeploymentOffer();
 		const received = new Promise((resolve) =>
-			deploymentService.offers.subscribe((receivedOffer) =>
+			deploymentService.offerUpdated.subscribe((receivedOffer) =>
 				resolve(expect(receivedOffer).toEqual(offer.toObject()))
 			)
 		);
@@ -41,7 +41,7 @@ describe('deployment service', () => {
 	test('release offer', async () => {
 		const offer = new rpc.DeploymentOffer();
 		const received = new Promise((resolve) =>
-			deploymentService.releaseOffers.subscribe((t) => {
+			deploymentService.offerWithdrawn.subscribe((t) => {
 				const [receivedOffer, cb] = t;
 				resolve(expect(receivedOffer).toEqual(offer.toObject()));
 				cb();
