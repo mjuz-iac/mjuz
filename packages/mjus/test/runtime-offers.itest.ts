@@ -195,4 +195,41 @@ describe('offers runtime', () => {
 			])
 		);
 	});
+
+	test('release not registered offer', async () => {
+		await new Promise<void>((resolve) =>
+			deploymentService.offerWithdrawn.push([testDeploymentOffer, resolve])
+		);
+	});
+
+	test('release not locked offer', async () => {
+		deploymentService.offerUpdated.push(testDeploymentOffer);
+		await new Promise<void>((resolve) =>
+			deploymentService.offerWithdrawn.push([testDeploymentOffer, resolve])
+		);
+	});
+
+	test('release locked offer', async () => {
+		deploymentService.offerUpdated.push({
+			...testDeploymentOffer,
+			offer: 'val',
+		});
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => resolve(expect(wish?.getIswithdrawn()).toBe(false)),
+			])
+		);
+		const offerReleased = new Promise<void>((resolve) =>
+			deploymentService.offerWithdrawn.push([testDeploymentOffer, resolve])
+		);
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => resolve(expect(wish?.getIswithdrawn()).toBe(true)),
+			])
+		);
+		resourcesService.wishDeleted.push(testWish);
+		await offerReleased;
+	});
 });

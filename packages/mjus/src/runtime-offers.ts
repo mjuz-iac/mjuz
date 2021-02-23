@@ -2,11 +2,13 @@ import {
 	accumFrom,
 	Behavior,
 	combine,
+	flatFuturesFrom,
 	performStream,
 	runNow,
 	sample,
 	snapshotWith,
 	Stream,
+	when,
 } from '@funkia/hareactive';
 import { call, callP, catchE, IO } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
@@ -209,6 +211,21 @@ const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	};
 };
 
+const offerRelease = (
+	offerWithdrawals: Stream<[DeploymentOffer<unknown>, () => void]>,
+	inboundOffers: Behavior<InboundOffers>
+): Behavior<Stream<IO<void>>> =>
+	flatFuturesFrom(
+		offerWithdrawals.map((withdrawal) => {
+			const [offer, cb] = withdrawal;
+			const offerId = `${offer.origin}:${offer.name}`;
+			const offerReleased: Behavior<boolean> = inboundOffers.map(
+				(offers) => !(offerId in offers)
+			);
+			return runNow(when(offerReleased)).map(() => call(cb));
+		})
+	);
+
 const wishPollAnswer = (
 	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>,
 	offers: Behavior<InboundOffers>
@@ -265,6 +282,9 @@ export const startOffersRuntime = async (
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
 	);
+	const sendOfferRelease = runNow(
+		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
+	);
 	const answerWishPolls = runNow(
 		performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
 	);
@@ -276,6 +296,7 @@ export const startOffersRuntime = async (
 
 	const stop = async () => {
 		offersDirectForward.deactivate();
+		sendOfferRelease.deactivate();
 		answerWishPolls.deactivate();
 	};
 	return {
