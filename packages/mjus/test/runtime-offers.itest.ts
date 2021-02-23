@@ -11,6 +11,7 @@ import {
 	Wish,
 } from '../src';
 import * as rpc from '@mjus/grpc-protos';
+import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 describe('offers runtime', () => {
 	let deploymentService: DeploymentService & {
@@ -113,5 +114,85 @@ describe('offers runtime', () => {
 		deploymentService.offerUpdated.push({ origin: 'a', name: 'b', offer: 'c' });
 
 		await threeUpdates;
+	});
+
+	const testWish: Wish<unknown> = { targetid: 'remote', name: 'test', iswithdrawn: false };
+	const testDeploymentOffer: DeploymentOffer<unknown> = { origin: 'remote', name: 'test' };
+	const noCb: () => void = () => {
+		// Intended to be empty
+	};
+
+	test('poll satisfied wish', async () => {
+		deploymentService.offerUpdated.push({
+			...testDeploymentOffer,
+			offer: { fancy: ['array', 'val', 3] },
+		});
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => {
+					expect(wish).toEqual(
+						new rpc.Wish()
+							.setTargetid('remote')
+							.setName('test')
+							.setIswithdrawn(false)
+							.setOffer(Value.fromJavaScript({ fancy: ['array', 'val', 3] }))
+					);
+					resolve();
+				},
+			])
+		);
+	});
+
+	test('poll unsatisfied wish', async () => {
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => {
+					expect(wish).toEqual(
+						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(false)
+					);
+					resolve();
+				},
+			])
+		);
+	});
+
+	test('poll withdrawn wish', async () => {
+		// Create and lock offer
+		resourcesService.wishPolled.push([testWish, noCb]);
+		// Withdrawal
+		deploymentService.offerWithdrawn.push([testDeploymentOffer, noCb]);
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => {
+					expect(wish).toEqual(
+						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(true)
+					);
+					resolve();
+				},
+			])
+		);
+	});
+
+	test('poll wish of released offer', async () => {
+		// Create and lock offer
+		resourcesService.wishPolled.push([testWish, noCb]);
+		// Withdrawal
+		deploymentService.offerWithdrawn.push([testDeploymentOffer, noCb]);
+		// Release
+		resourcesService.wishDeleted.push(testWish);
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => {
+					expect(wish).toEqual(
+						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(false)
+					);
+					resolve();
+				},
+			])
+		);
 	});
 });

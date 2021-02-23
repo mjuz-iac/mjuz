@@ -7,9 +7,8 @@ import {
 	sample,
 	snapshotWith,
 	Stream,
-	tick,
 } from '@funkia/hareactive';
-import { callP, catchE, IO } from '@funkia/io';
+import { call, callP, catchE, IO } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, ResourcesService, Wish } from './resources-service';
@@ -210,6 +209,28 @@ const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	};
 };
 
+const wishPollAnswer = (
+	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>,
+	offers: Behavior<InboundOffers>
+): Stream<IO<void>> =>
+	snapshotWith(
+		(poll, offers) => {
+			const [wish, cb] = poll;
+			const offerId = `${wish.targetid}:${wish.name}`;
+			const offer = new rpc.Wish().setTargetid(wish.targetid).setName(wish.name);
+			if (offerId in offers)
+				if (offers[offerId].withdrawn) offer.setIswithdrawn(true);
+				else
+					offer.setOffer(
+						Value.fromJavaScript(offers[offerId].offer?.offer as JavaScriptValue)
+					);
+			else offer.setIswithdrawn(false);
+			return call(() => cb(null, offer));
+		},
+		offers,
+		polls
+	);
+
 export type OffersRuntime = {
 	inboundOfferUpdates: Stream<void>;
 	stop: () => Promise<void>;
@@ -244,7 +265,9 @@ export const startOffersRuntime = async (
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
 	);
-	offersDirectForward.activate(tick());
+	const answerWishPolls = runNow(
+		performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
+	);
 
 	const inboundOfferChanges: Stream<void> = combine(
 		deployment.offerUpdated.mapTo(undefined),
@@ -253,6 +276,7 @@ export const startOffersRuntime = async (
 
 	const stop = async () => {
 		offersDirectForward.deactivate();
+		answerWishPolls.deactivate();
 	};
 	return {
 		inboundOfferUpdates: inboundOfferChanges,
