@@ -14,7 +14,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, ResourcesService, Wish } from './resources-service';
 import { newLogger } from './logging';
-import { Value } from 'google-protobuf/google/protobuf/struct_pb';
+import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';
 
 const logger = newLogger('offers runtime');
@@ -165,7 +165,7 @@ const toRpcDeploymentOffer = <O>(offer: Offer<O>, deploymentName: string): rpc.D
 	new rpc.DeploymentOffer()
 		.setOrigin(deploymentName)
 		.setName(offer.name)
-		.setOffer(Value.fromJavaScript(offer.offer));
+		.setOffer(Value.fromJavaScript(offer.offer || null));
 const directOfferForward = (
 	offerUpdated: Stream<Offer<unknown>>,
 	remotes: Behavior<Remotes>,
@@ -203,7 +203,7 @@ const directOfferForward = (
 			)
 		);
 
-const toDeploymentOffer = <O>(wish: Wish): DeploymentOffer<O> => {
+const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	return {
 		origin: wish.targetid,
 		name: wish.name,

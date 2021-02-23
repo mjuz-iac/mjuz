@@ -22,8 +22,10 @@ describe('offers runtime', () => {
 		remoteDeleted: SinkStream<Remote>;
 		offerUpdated: SinkStream<Offer<unknown>>;
 		offerWithdrawn: SinkStream<[Offer<unknown>, (error: Error | null) => void]>;
-		wishPolled: SinkStream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
-		wishDeleted: SinkStream<Wish>;
+		wishPolled: SinkStream<
+			[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+		>;
+		wishDeleted: SinkStream<Wish<unknown>>;
 	};
 	let offersRuntime: OffersRuntime;
 	let remoteDeploymentService: DeploymentService;
@@ -40,8 +42,10 @@ describe('offers runtime', () => {
 			remoteDeleted: sinkStream<Remote>(),
 			offerUpdated: sinkStream<Offer<unknown>>(),
 			offerWithdrawn: sinkStream<[Offer<unknown>, (error: Error | null) => void]>(),
-			wishPolled: sinkStream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>(),
-			wishDeleted: sinkStream<Wish>(),
+			wishPolled: sinkStream<
+				[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+			>(),
+			wishDeleted: sinkStream<Wish<unknown>>(),
 			stop: async () => {
 				// Intended to be empty
 			},

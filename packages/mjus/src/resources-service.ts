@@ -10,7 +10,7 @@ import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 const logger = newLogger('resources service');
 
-export const toRpcWish = (wish: Wish): rpc.Wish => {
+export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish => {
 	const w = new rpc.Wish()
 		.setTargetid(wish.targetid)
 		.setName(wish.name)
@@ -23,6 +23,14 @@ export const toOffer = <O>(offer: rpc.Offer): Offer<O> => {
 		beneficiaryid: offer.getBeneficiaryid(),
 		name: offer.getName(),
 		offer: offer.getOffer()?.toJavaScript() as O,
+	};
+};
+export const toWish = <O>(wish: rpc.Wish): Wish<O> => {
+	return {
+		targetid: wish.getTargetid(),
+		name: wish.getName(),
+		iswithdrawn: wish.getIswithdrawn(),
+		offer: wish.getOffer()?.toJavaScript() as O,
 	};
 };
 
@@ -97,13 +105,13 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Polling remote offer');
-			wishPolled.push([wish.toObject(), cb]);
+			wishPolled.push([toWish(wish), cb]);
 		}
 
 		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Wish deleted');
-			wishDeleted.push(wish.toObject());
+			wishDeleted.push(toWish(wish));
 			cb(null, new Empty());
 		}
 	}
@@ -112,8 +120,10 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	const remoteDeleted = sinkStream<Remote>();
 	const offerUpdated = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
-	const wishPolled = sinkStream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>();
-	const wishDeleted = sinkStream<Wish>();
+	const wishPolled = sinkStream<
+		[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+	>();
+	const wishDeleted = sinkStream<Wish<unknown>>();
 
 	return {
 		server: new ResourcesServer(),
@@ -127,15 +137,15 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 };
 
 export type Remote = rpc.Remote.AsObject;
-export type Offer<O> = Omit<rpc.Offer.AsObject, 'offer'> & { offer: O };
-export type Wish = rpc.Wish.AsObject;
+export type Offer<O> = Omit<rpc.Offer.AsObject, 'offer'> & { offer?: O };
+export type Wish<O> = Omit<rpc.Wish.AsObject, 'offer'> & { offer?: O };
 export type ResourcesService = {
 	remoteCreated: Stream<Remote>;
 	remoteDeleted: Stream<Remote>;
 	offerUpdated: Stream<Offer<unknown>>;
 	offerWithdrawn: Stream<[Offer<unknown>, (error: Error | null) => void]>;
-	wishPolled: Stream<[Wish, (error: Error | null, wish: rpc.Wish | null) => void]>;
-	wishDeleted: Stream<Wish>;
+	wishPolled: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>;
+	wishDeleted: Stream<Wish<unknown>>;
 	stop: () => Promise<void>;
 };
 export const startResourcesService = async (
