@@ -75,7 +75,11 @@ export const runDeployment = <S>(
 			nextAction(offersRuntime.inboundOfferUpdates)
 		);
 		const finalStack = await runIO(loop);
-		await Promise.all([resourcesService.stop(), deploymentService.stop(), offersRuntime.stop]);
+		await Promise.all([
+			resourcesService.stop(),
+			deploymentService.stop(),
+			offersRuntime.stop(),
+		]);
 		return finalStack;
 	};
 
