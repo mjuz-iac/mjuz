@@ -13,6 +13,7 @@ service Deployment {
 	// is deployed anymore or will be deployed.
 	// Assumes `origin` and `name` are set.
 	rpc releaseOffer(DeploymentOffer) returns (google.protobuf.Empty) {}
+	rpc heartbeat(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message DeploymentOffer {

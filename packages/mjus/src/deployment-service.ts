@@ -41,6 +41,10 @@ const deploymentService = (): Omit<DeploymentService, 'stop'> & {
 			logger.info(offer, 'Releasing offer');
 			releaseOffers.push([toDeploymentOffer(offer), () => cb(null, new Empty())]);
 		}
+
+		heartbeat(call: grpc.ServerUnaryCall<Empty, Empty>, cb: sendUnaryData<Empty>): void {
+			cb(null, new Empty());
+		}
 	}
 
 	const offers = sinkStream<DeploymentOffer<unknown>>();

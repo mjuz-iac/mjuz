@@ -11,6 +11,7 @@ type RuntimeOptions = {
 	deploymentName: string;
 	deploymentHost: string;
 	deploymentPort: number;
+	heartbeatInterval: number;
 	resourcesHost: string;
 	resourcesPort: number;
 };
@@ -41,6 +42,11 @@ const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 			default: defaults.resourcesPort || 19951,
 			description: 'Port of the µs resources service',
 		},
+		heartbeatInterval: {
+			alias: 'h',
+			default: defaults.heartbeatInterval || 5,
+			description: 'Heartbeat interval on connections between deployments in seconds',
+		},
 	}).argv;
 
 export const runDeployment = <S>(
@@ -59,7 +65,8 @@ export const runDeployment = <S>(
 		const offersRuntime = await startOffersRuntime(
 			deploymentService,
 			resourcesService,
-			opts.deploymentName
+			opts.deploymentName,
+			opts.heartbeatInterval
 		);
 
 		const finalStack = await runIO(

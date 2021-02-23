@@ -54,7 +54,8 @@ describe('offers runtime', () => {
 		offersRuntime = await startOffersRuntime(
 			deploymentService,
 			resourcesService,
-			'test-deployment'
+			'test-deployment',
+			1
 		);
 
 		remoteDeploymentService = await startDeploymentService('127.0.0.1', 19953);

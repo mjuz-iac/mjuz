@@ -6,19 +6,25 @@ import {
 	performStream,
 	runNow,
 	sample,
+	sinkStream,
 	snapshotWith,
 	Stream,
 	when,
 } from '@funkia/hareactive';
-import { call, callP, catchE, IO, withEffects } from '@funkia/io';
+import { call, callP, catchE, IO, runIO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, ResourcesService, Wish } from './resources-service';
 import { newLogger } from './logging';
 import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';
+import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 
 const logger = newLogger('offers runtime');
+
+const setupRemote = (remote: Remote): rpc.DeploymentClient =>
+	new rpc.DeploymentClient(`${remote.host}:${remote.port}`, grpc.credentials.createInsecure());
+const shutdownRemote = (client: rpc.DeploymentClient): IO<void> => call(() => client.close());
 
 type Remotes = Record<string, rpc.DeploymentClient>;
 const accumRemotes = (
@@ -34,27 +40,60 @@ const accumRemotes = (
 					logger.warn(
 						`Remote ${remote.id} created even though it was already registered`
 					);
-				else
-					update[remote.id] = new rpc.DeploymentClient(
-						`${remote.host}:${remote.port}`,
-						grpc.credentials.createInsecure()
-					);
+				else update[remote.id] = setupRemote(remote);
 			else {
 				if (!(remote.id in update))
 					logger.warn(`Remote ${remote.id} deleted that was not registered`);
 				else {
-					update[remote.id].close();
+					runIO(shutdownRemote(update[remote.id]));
 					delete update[remote.id];
 				}
 			}
 			return update;
 		},
 		{},
-		combine(
-			remoteCreated.map<['add' | 'remove', Remote]>((remote) => ['add', remote]),
-			remoteDeleted.map<['add' | 'remove', Remote]>((remote) => ['remove', remote])
+		combine<['remove' | 'add', Remote]>(
+			remoteCreated.map<['add', Remote]>((remote) => ['add', remote]),
+			remoteDeleted.map<['remove', Remote]>((remote) => ['remove', remote])
 		)
 	);
+
+type HeartbeatMonitor = {
+	// Fires a remote client with its id on the first successful heartbeat (initially and after disconnects)
+	connects: Stream<[string, rpc.DeploymentClient]>;
+	stop: () => void;
+};
+/**
+ * @param remotes
+ * @param heartbeatInterval in seconds
+ */
+const startHeartbeatMonitor = (
+	remotes: Behavior<Remotes>,
+	heartbeatInterval: number
+): HeartbeatMonitor => {
+	const connected = new Set<string>();
+	const connects = sinkStream<[string, rpc.DeploymentClient]>();
+
+	const interval = setInterval(() => {
+		Object.entries(runNow(sample(remotes))).forEach((t) => {
+			const [remoteId, client] = t;
+			client.heartbeat(new Empty(), (err) => {
+				if (err && connected.has(remoteId)) {
+					logger.info(`Remote ${remoteId} disconnected`);
+					connected.delete(remoteId);
+				} else if (!err && !connected.has(remoteId)) {
+					logger.info(`Remote ${remoteId} connected`);
+					connected.add(remoteId);
+					connects.push(t);
+				}
+			});
+		});
+	}, heartbeatInterval * 1000);
+	return {
+		connects,
+		stop: () => clearInterval(interval),
+	};
+};
 
 type Offers = Record<string, Offer<unknown>>;
 const accumOutboundOffers = (
@@ -255,11 +294,13 @@ export type OffersRuntime = {
 export const startOffersRuntime = async (
 	deployment: DeploymentService,
 	resources: ResourcesService,
-	deploymentName: string
+	deploymentName: string,
+	heartbeatInterval: number
 ): Promise<OffersRuntime> => {
 	const remotes: Behavior<Remotes> = runNow(
 		sample(accumRemotes(resources.remoteCreated, resources.remoteDeleted))
 	);
+	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval);
 	const outboundOffers: Behavior<Offers> = runNow(
 		sample(
 			accumOutboundOffers(
@@ -295,6 +336,7 @@ export const startOffersRuntime = async (
 	);
 
 	const stop = async () => {
+		heartbeatMonitor.stop();
 		offersDirectForward.deactivate();
 		sendOfferRelease.deactivate();
 		answerWishPolls.deactivate();
