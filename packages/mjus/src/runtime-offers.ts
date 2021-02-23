@@ -243,6 +243,32 @@ const directOfferForward = (
 			)
 		);
 
+const offerResend = (
+	offers: Behavior<Offers>,
+	connects: Stream<[string, rpc.DeploymentClient]>,
+	deploymentName: string
+) =>
+	snapshotWith<[string, rpc.DeploymentClient], Offers, IO<void>>(
+		(remote, offers) => {
+			const [remoteId, client] = remote;
+			const resends: IO<void>[] = Object.keys(offers)
+				.filter((offerId) => offerId.startsWith(`${remoteId}:`))
+				.map((offerId) =>
+					call(() => {
+						client.offer(
+							toRpcDeploymentOffer(offers[offerId], deploymentName),
+							(err) => {
+								if (err) logger.warn(err, `Failed to resend offer ${offerId}`);
+							}
+						);
+					})
+				);
+			return resends.reduce((a, b) => a.flatMap(() => b));
+		},
+		offers,
+		connects
+	);
+
 const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	return {
 		origin: wish.targetid,
@@ -323,6 +349,9 @@ export const startOffersRuntime = async (
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
 	);
+	const resendOffers = runNow(
+		performStream(offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName))
+	);
 	const sendOfferRelease = runNow(
 		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
 	);
@@ -338,6 +367,7 @@ export const startOffersRuntime = async (
 	const stop = async () => {
 		heartbeatMonitor.stop();
 		offersDirectForward.deactivate();
+		resendOffers.deactivate();
 		sendOfferRelease.deactivate();
 		answerWishPolls.deactivate();
 	};

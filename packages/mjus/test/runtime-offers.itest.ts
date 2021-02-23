@@ -66,7 +66,7 @@ describe('offers runtime', () => {
 		await remoteDeploymentService.stop();
 	});
 
-	test('directly forward offer', async () => {
+	test('remote create, delete and directly forward offer', async () => {
 		const receivedOffer = new Promise<void>((resolve) =>
 			remoteDeploymentService.offerUpdated.subscribe((receivedOffer) =>
 				resolve(
@@ -98,6 +98,30 @@ describe('offers runtime', () => {
 		);
 		resourcesService.remoteDeleted.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		await deletedRemote;
+	});
+
+	test('resend offers on connect', async () => {
+		await remoteDeploymentService.stop();
+		resourcesService.remoteCreated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
+		resourcesService.offerUpdated.push({
+			beneficiaryid: 'remote',
+			name: 'test',
+			offer: { a: ['b', 'c'] },
+		});
+
+		remoteDeploymentService = await startDeploymentService('127.0.0.1', 19953);
+		const receivedOffer = new Promise<void>((resolve) =>
+			remoteDeploymentService.offerUpdated.subscribe((receivedOffer) =>
+				resolve(
+					expect(receivedOffer).toEqual({
+						origin: 'test-deployment',
+						name: 'test',
+						offer: { a: ['b', 'c'] },
+					})
+				)
+			)
+		);
+		await receivedOffer;
 	});
 
 	test('inbound offer updates', async () => {
