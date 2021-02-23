@@ -117,25 +117,25 @@ describe('reaction runtime', () => {
 
 		test('direct destroy', () => {
 			remainingActions = ['destroy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
 			return expect(runIO(l)).resolves.toBe('Idepdes');
 		});
 
 		test('direct terminate', () => {
 			remainingActions = ['terminate'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
 			return expect(runIO(l)).resolves.toBe('Idepter');
 		});
 
 		test('deploy and terminate', () => {
 			remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
 			return expect(runIO(l)).resolves.toBe('Idepdepdepter');
 		});
 
 		test('deploy and destroy', () => {
 			remainingActions = ['deploy', 'deploy', 'destroy', 'deploy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction);
+			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
 			return expect(runIO(l)).resolves.toBe('Idepdepdepdes');
 		});
 	});

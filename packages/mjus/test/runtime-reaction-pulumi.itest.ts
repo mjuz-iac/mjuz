@@ -44,7 +44,7 @@ describe('reaction runtime and pulumi integration', () => {
 				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(empty, terminate, sinkFuture())
-		);
+		)[0];
 		return expect(runIO(l.map(simplifyStack)))
 			.resolves.toEqual({ name: 'testStack', isDeployed: true, isDestroyed: false })
 			.then(() => expect(ops).toBe(2));
@@ -63,7 +63,7 @@ describe('reaction runtime and pulumi integration', () => {
 				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(stateChanges, terminate, sinkFuture())
-		);
+		)[0];
 		return expect(runIO(l.map(simplifyStack)))
 			.resolves.toEqual({ name: 'testStack', isDeployed: true, isDestroyed: false })
 			.then(() => expect(ops).toBe(4));
@@ -80,7 +80,7 @@ describe('reaction runtime and pulumi integration', () => {
 				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(empty, sinkFuture(), destroy)
-		);
+		)[0];
 		return expect(runIO(l.map(simplifyStack)))
 			.resolves.toEqual({ name: 'testStack', isDeployed: false, isDestroyed: true })
 			.then(() => expect(ops).toBe(2));
@@ -99,7 +99,7 @@ describe('reaction runtime and pulumi integration', () => {
 				return operations(Behavior.of(emptyProgram))(action);
 			},
 			nextAction(stateChanges, sinkFuture(), destroy)
-		);
+		)[0];
 		return expect(runIO(l.map(simplifyStack)))
 			.resolves.toEqual({ name: 'testStack', isDeployed: false, isDestroyed: true })
 			.then(() => expect(ops).toBe(4));

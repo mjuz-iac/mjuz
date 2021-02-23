@@ -69,9 +69,12 @@ export const runDeployment = <S>(
 			opts.heartbeatInterval
 		);
 
-		const finalStack = await runIO(
-			reactionLoop(initOperation, operations, nextAction(offersRuntime.inboundOfferUpdates))
+		const [loop, initialized] = reactionLoop(
+			initOperation,
+			operations,
+			nextAction(offersRuntime.inboundOfferUpdates)
 		);
+		const finalStack = await runIO(loop);
 		await Promise.all([resourcesService.stop(), deploymentService.stop(), offersRuntime.stop]);
 		return finalStack;
 	};
