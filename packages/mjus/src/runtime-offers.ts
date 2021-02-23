@@ -10,7 +10,7 @@ import {
 	Stream,
 	when,
 } from '@funkia/hareactive';
-import { call, callP, catchE, IO } from '@funkia/io';
+import { call, callP, catchE, IO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, ResourcesService, Wish } from './resources-service';
@@ -220,9 +220,9 @@ const offerRelease = (
 			const [offer, cb] = withdrawal;
 			const offerId = `${offer.origin}:${offer.name}`;
 			const offerReleased: Behavior<boolean> = inboundOffers.map(
-				(offers) => !(offerId in offers)
+				(offers) => !(offerId in offers) || !offers[offerId].locked
 			);
-			return runNow(when(offerReleased)).map(() => call(cb));
+			return runNow(when(offerReleased)).map(withEffects(cb));
 		})
 	);
 
