@@ -4,6 +4,7 @@ import {
 	combine,
 	flatFuturesFrom,
 	Future,
+	nextOccurrenceFrom,
 	performStream,
 	runNow,
 	sample,
@@ -274,6 +275,43 @@ const offerResend = (
 		connects
 	);
 
+const offerWithdrawalSend = (
+	remotes: Behavior<Remotes>,
+	connects: Stream<[string, rpc.DeploymentClient]>,
+	withdrawals: Stream<[Offer<unknown>, (error: Error | null) => void]>,
+	deploymentName: string
+): Behavior<Stream<IO<void>>> =>
+	flatFuturesFrom(
+		snapshotWith<[Offer<unknown>, (error: Error | null) => void], Remotes, Future<IO<void>>>(
+			(withdrawal, remotes) => {
+				const [offer, cb] = withdrawal;
+				if (offer.beneficiaryid in remotes)
+					return Future.of(
+						call(() => {
+							remotes[offer.beneficiaryid].releaseOffer(
+								toRpcDeploymentOffer(offer, deploymentName),
+								// eslint-disable-next-line @typescript-eslint/no-empty-function
+								cb
+							);
+						})
+					);
+				/*  eslint-disable prettier/prettier */ else
+				return runNow(sample(nextOccurrenceFrom(
+					connects.filter((remote) => remote[0] === offer.beneficiaryid).map((remote) => call(() => {
+						remote[1].releaseOffer(
+							toRpcDeploymentOffer(offer, deploymentName),
+							// eslint-disable-next-line @typescript-eslint/no-empty-function
+							cb
+						)
+					}))
+				)));
+			/*  eslint-enable prettier/prettier */
+			},
+			remotes,
+			withdrawals
+		)
+	);
+
 const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	return {
 		origin: wish.targetid,
@@ -332,7 +370,7 @@ const delayUntilSatisfiedWishPollAnswer = (
 					const offerId = `${wish.targetid}:${wish.name}`;
 					const offer = new rpc.Wish().setTargetid(wish.targetid).setName(wish.name);
 					const offerPresent: Behavior<boolean> = offers.map(
-						(offers) => offerId in offers && !offers[offerId].withdrawn
+						(offers) => offerId in offers // && !offers[offerId].withdrawn
 					);
 					/*  eslint-disable prettier/prettier */
 					return runNow(when(offerPresent)).map(() => call(() =>
@@ -388,6 +426,16 @@ export const startOffersRuntime = async (
 	const resendOffers = runNow(
 		performStream(offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName))
 	);
+	const sendOfferWithdrawals = runNow(
+		sample(
+			offerWithdrawalSend(
+				remotes,
+				heartbeatMonitor.connects,
+				resources.offerWithdrawn,
+				deploymentName
+			)
+		).flatMap(performStream)
+	);
 	const sendOfferRelease = runNow(
 		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
 	);
@@ -405,6 +453,7 @@ export const startOffersRuntime = async (
 		heartbeatMonitor.stop();
 		offersDirectForward.deactivate();
 		resendOffers.deactivate();
+		sendOfferWithdrawals.deactivate();
 		sendOfferRelease.deactivate();
 		answerWishPolls.deactivate();
 	};
