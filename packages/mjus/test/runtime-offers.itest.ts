@@ -21,6 +21,7 @@ describe('offers runtime', () => {
 	let resourcesService: ResourcesService & {
 		remoteCreated: SinkStream<Remote>;
 		remoteDeleted: SinkStream<Remote>;
+		offerRefreshed: SinkStream<Offer<unknown>>;
 		offerUpdated: SinkStream<Offer<unknown>>;
 		offerWithdrawn: SinkStream<[Offer<unknown>, (error: Error | null) => void]>;
 		wishPolled: SinkStream<
@@ -41,6 +42,7 @@ describe('offers runtime', () => {
 		resourcesService = {
 			remoteCreated: sinkStream<Remote>(),
 			remoteDeleted: sinkStream<Remote>(),
+			offerRefreshed: sinkStream<Offer<unknown>>(),
 			offerUpdated: sinkStream<Offer<unknown>>(),
 			offerWithdrawn: sinkStream<[Offer<unknown>, (error: Error | null) => void]>(),
 			wishPolled: sinkStream<

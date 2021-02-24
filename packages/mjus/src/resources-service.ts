@@ -56,6 +56,8 @@ export const createRemote = (remote: rpc.Remote): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.createRemote(remote, cb));
 export const deleteRemote = (remote: rpc.Remote): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.deleteRemote(remote, cb));
+export const refreshOffer = (offer: rpc.Offer): Promise<Empty> =>
+	resourcesClientRpc((client, cb) => client.refreshOffer(offer, cb));
 export const updateOffer = (offer: rpc.Offer): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.updateOffer(offer, cb));
 export const deleteOffer = (offer: rpc.Offer): Promise<Empty> =>
@@ -89,6 +91,13 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 			cb(null, new Empty());
 		}
 
+		refreshOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
+			const offer = call.request as rpc.Offer;
+			logger.info(offer, 'Offer refreshed');
+			offerRefreshed.push(toOffer(offer));
+			cb(null, new Empty());
+		}
+
 		updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
 			logger.info(offer, 'Offer updated');
@@ -118,6 +127,7 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 
 	const remoteCreated = sinkStream<Remote>();
 	const remoteDeleted = sinkStream<Remote>();
+	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerUpdated = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
 	const wishPolled = sinkStream<
@@ -129,6 +139,7 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		server: new ResourcesServer(),
 		remoteCreated,
 		remoteDeleted,
+		offerRefreshed,
 		offerUpdated,
 		offerWithdrawn,
 		wishPolled,
@@ -142,6 +153,7 @@ export type Wish<O> = Omit<rpc.Wish.AsObject, 'offer'> & { offer?: O };
 export type ResourcesService = {
 	remoteCreated: Stream<Remote>;
 	remoteDeleted: Stream<Remote>;
+	offerRefreshed: Stream<Offer<unknown>>;
 	offerUpdated: Stream<Offer<unknown>>;
 	offerWithdrawn: Stream<[Offer<unknown>, (error: Error | null) => void]>;
 	wishPolled: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>;

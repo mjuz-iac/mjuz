@@ -13,6 +13,9 @@ service Resources {
 	// Assumes ìd` is set.
 	rpc deleteRemote(Remote) returns (google.protobuf.Empty) {}
 
+	// Resends the currently deployed offer state. Assumes a remote is registered for the provided beneficiary id.
+	// Assumes all offer properties are set.
+	rpc refreshOffer(Offer) returns (google.protobuf.Empty) {}
 	// Creates or updates an offer. Assumes a remote is registered for the provided beneficiary id.
 	// Assumes all offer properties are set.
 	rpc updateOffer(Offer) returns (google.protobuf.Empty) {}

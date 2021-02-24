@@ -42,6 +42,38 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 		}
 	},
 
+	async diff(
+		id: ID,
+		oldProps: RemoteConnectionProps,
+		newProps: RemoteConnectionProps
+	): Promise<dynamic.DiffResult> {
+		return {
+			changes: true, // always trigger update
+			replaces: [oldProps.name !== newProps.name ? 'name' : null].filter(
+				(v) => v !== null
+			) as string[],
+			deleteBeforeReplace: true,
+		};
+	},
+
+	async update(
+		id: ID,
+		oldProps: RemoteConnectionProps,
+		newProps: RemoteConnectionProps
+	): Promise<dynamic.UpdateResult> {
+		const remote = new rpc.Remote()
+			.setId(newProps.name)
+			.setHost(newProps.host)
+			.setPort(newProps.port);
+		await createRemote(remote);
+
+		const outProps: RemoteConnectionProps = {
+			...newProps,
+			error: null,
+		};
+		return { outs: outProps };
+	},
+
 	async delete(id: ID): Promise<void> {
 		const remote = new rpc.Remote().setId(id);
 		await deleteRemote(remote);

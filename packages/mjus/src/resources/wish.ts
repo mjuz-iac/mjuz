@@ -4,6 +4,7 @@ import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { RemoteConnection } from './remote-connection';
 import { getWish, wishDeleted } from '../resources-service';
 import { isDeepStrictEqual } from 'util';
+import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 type WishProps<O> = {
 	offerName: string;
@@ -117,7 +118,10 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 
 	async delete(id: ID, props: WishProps<O>): Promise<void> {
 		if (props.isSatisfied) {
-			const wish = new rpc.Wish().setName(props.offerName).setTargetid(`${props.target}`);
+			const wish = new rpc.Wish()
+				.setName(props.offerName)
+				.setTargetid(`${props.target}`)
+				.setOffer(Value.fromJavaScript(null));
 			await wishDeleted(wish);
 		}
 	}

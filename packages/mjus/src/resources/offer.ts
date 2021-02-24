@@ -1,7 +1,7 @@
 import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
 import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 import * as rpc from '@mjus/grpc-protos';
-import { deleteOffer, updateOffer } from '../resources-service';
+import { deleteOffer, refreshOffer, updateOffer } from '../resources-service';
 import { RemoteConnection } from './remote-connection';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { isDeepStrictEqual } from 'util';
@@ -49,6 +49,11 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 			oldProps.beneficiary !== newProps.beneficiary ||
 			oldProps.offerName !== newProps.offerName;
 		const offerChanged = targetChanged || !isDeepStrictEqual(oldProps.offer, newProps.offer);
+		const offer = new rpc.Offer()
+			.setName(oldProps.offerName)
+			.setBeneficiaryid(`${oldProps.beneficiary}`)
+			.setOffer(Value.fromJavaScript(oldProps.offer || null));
+		await refreshOffer(offer);
 
 		return {
 			changes: offerChanged,
@@ -85,7 +90,8 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 	async delete(id: ID, inputs: OfferProps<O>): Promise<void> {
 		const offer = new rpc.Offer()
 			.setName(inputs.offerName)
-			.setBeneficiaryid(`${inputs.beneficiary}`);
+			.setBeneficiaryid(`${inputs.beneficiary}`)
+			.setOffer(Value.fromJavaScript(inputs.offer || null));
 		await deleteOffer(offer);
 	}
 }

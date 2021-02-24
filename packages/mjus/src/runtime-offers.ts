@@ -375,7 +375,7 @@ const delayUntilSatisfiedWishPollAnswer = (
 					/*  eslint-disable prettier/prettier */
 					return runNow(when(offerPresent)).map(() => call(() =>
 						cb(null, offer.setOffer(Value.fromJavaScript(runNow(
-							sample(offers.map((offers) => offers[offerId].offer?.offer as JavaScriptValue))
+							sample(offers.map((offers) => (offers[offerId].offer?.offer || null) as JavaScriptValue))
 						))))
 					));
 					/* eslint-enable prettier/prettier */
@@ -404,7 +404,7 @@ export const startOffersRuntime = async (
 	const outboundOffers: Behavior<Offers> = runNow(
 		sample(
 			accumOutboundOffers(
-				resources.offerUpdated,
+				combine(resources.offerUpdated, resources.offerRefreshed),
 				resources.offerWithdrawn.map((t) => t[0])
 			)
 		)
