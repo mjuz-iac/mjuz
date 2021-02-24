@@ -264,7 +264,12 @@ const offerResend = (
 						);
 					})
 				);
-			return resends.reduce((a, b) => a.flatMap(() => b));
+			return resends.reduce(
+				(a, b) => a.flatMap(() => b),
+				call(() => {
+					// Intended to be empty
+				})
+			);
 		},
 		offers,
 		connects

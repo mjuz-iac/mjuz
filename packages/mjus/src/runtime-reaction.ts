@@ -58,7 +58,11 @@ export const reactionLoop = <S>(
 	const logger = newLogger('reaction loop');
 	const initialized = sinkFuture<void>();
 
-	const recurse = (bufferingNextAction: Behavior<Future<Action>>, state: S): IO<S> =>
+	const recurse = (
+		bufferingNextAction: Behavior<Future<Action>>,
+		state: S,
+		initialRun = false
+	): IO<S> =>
 		call(() => logger.info(`Waiting for next action`))
 			.flatMap(() => callP(() => toPromise(runNow(sample(bufferingNextAction)))))
 			.flatMap((action) => {
@@ -67,7 +71,7 @@ export const reactionLoop = <S>(
 				logger.info(`Running action ${action}`);
 				return operations(action)(state).flatMap((newState) => {
 					logger.info(`Completed action ${action}`);
-					initialized.resolve();
+					if (initialRun) initialized.resolve();
 					return isFinalAction(action)
 						? IO.of(newState)
 						: recurse(bufferingNextAction, newState);
@@ -79,7 +83,7 @@ export const reactionLoop = <S>(
 			.flatMap(initOperation)
 			.flatMap((state) => {
 				logger.info('Completed initializing state, triggering deploy');
-				return recurse(Behavior.of(Future.of('deploy')), state);
+				return recurse(Behavior.of(Future.of('deploy')), state, true);
 			}),
 		initialized,
 	];
