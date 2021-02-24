@@ -254,16 +254,15 @@ const offerResend = (
 			const [remoteId, client] = remote;
 			const resends: IO<void>[] = Object.keys(offers)
 				.filter((offerId) => offerId.startsWith(`${remoteId}:`))
-				.map((offerId) =>
-					call(() => {
-						client.offer(
-							toRpcDeploymentOffer(offers[offerId], deploymentName),
-							(err) => {
+				/*  eslint-disable prettier/prettier */
+				.map((offerId) => call(() => {
+					client.offer(toRpcDeploymentOffer(offers[offerId], deploymentName),
+						(err) => {
 								if (err) logger.warn(err, `Failed to resend offer ${offerId}`);
-							}
-						);
-					})
-				);
+						}
+					);
+				}));
+				/*  eslint-enable prettier/prettier */
 			return resends.reduce(
 				(a, b) => a.flatMap(() => b),
 				call(() => {
@@ -319,6 +318,34 @@ const wishPollAnswer = (
 		polls
 	);
 
+// Do not answer with unsatisfied offers but wait
+// Not the intended semantics
+const delayUntilSatisfiedWishPollAnswer = (
+	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>,
+	offers: Behavior<InboundOffers>
+): Stream<IO<void>> =>
+	runNow(
+		sample(
+			flatFuturesFrom(
+				polls.map((poll) => {
+					const [wish, cb] = poll;
+					const offerId = `${wish.targetid}:${wish.name}`;
+					const offer = new rpc.Wish().setTargetid(wish.targetid).setName(wish.name);
+					const offerPresent: Behavior<boolean> = offers.map(
+						(offers) => offerId in offers && !offers[offerId].withdrawn
+					);
+					/*  eslint-disable prettier/prettier */
+					return runNow(when(offerPresent)).map(() => call(() =>
+						cb(null, offer.setOffer(Value.fromJavaScript(runNow(
+							sample(offers.map((offers) => offers[offerId].offer?.offer as JavaScriptValue))
+						))))
+					));
+					/* eslint-enable prettier/prettier */
+				})
+			)
+		)
+	);
+
 export type OffersRuntime = {
 	inboundOfferUpdates: Stream<void>;
 	stop: () => Promise<void>;
@@ -365,7 +392,8 @@ export const startOffersRuntime = async (
 		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
 	);
 	const answerWishPolls = runNow(
-		performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
+		performStream(delayUntilSatisfiedWishPollAnswer(resources.wishPolled, inboundOffers))
+		// performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
 	);
 
 	const inboundOfferChanges: Stream<void> = combine(
