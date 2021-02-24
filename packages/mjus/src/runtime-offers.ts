@@ -3,6 +3,7 @@ import {
 	Behavior,
 	combine,
 	flatFuturesFrom,
+	Future,
 	performStream,
 	runNow,
 	sample,
@@ -320,6 +321,9 @@ export type OffersRuntime = {
 export const startOffersRuntime = async (
 	deployment: DeploymentService,
 	resources: ResourcesService,
+	// Indicating when first deployment finished => only after this the entire deployment
+	// state is reconstructed and offers can be safely released
+	initialized: Future<void>,
 	deploymentName: string,
 	heartbeatInterval: number
 ): Promise<OffersRuntime> => {

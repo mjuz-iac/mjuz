@@ -1,4 +1,4 @@
-import { sinkStream, SinkStream } from '@funkia/hareactive';
+import { never, sinkStream, SinkStream } from '@funkia/hareactive';
 import {
 	DeploymentOffer,
 	DeploymentService,
@@ -54,6 +54,7 @@ describe('offers runtime', () => {
 		offersRuntime = await startOffersRuntime(
 			deploymentService,
 			resourcesService,
+			never,
 			'test-deployment',
 			1
 		);
