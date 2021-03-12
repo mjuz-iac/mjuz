@@ -1,13 +1,12 @@
 import {
 	Behavior,
-	fromFunction,
 	Future,
 	nextOccurrenceFrom,
 	runNow,
 	sample,
 	sinkFuture,
+	stepTo,
 	Stream,
-	tick,
 	toPromise,
 } from '@funkia/hareactive';
 import { call, callP, IO } from '@funkia/io';
@@ -21,8 +20,8 @@ export type Action = 'deploy' | FinalAction;
 
 /**
  * Starts sensing for next action after first moment, but resolves the action future not before the second moment. If
- * the next action was sensed before the second moment, the action future is directly resolved with it at the second
- * moment.
+ * the next action was sensed before the second moment, the action future is directly resolved at the second moment.
+ * Otherwise it is resolved on the first triggered action after the second moment.
  * @param stateChanges When fired at least once, deploy action shall be performed.
  * @param terminateTrigger When triggered, deployment shall be terminated. Supersedes deploy actions.
  * @param destroyTrigger When triggered, deployment shall be destroyed. Supersedes deploy and terminate actions.
@@ -32,14 +31,17 @@ export const nextAction = <T, U, V>(
 	terminateTrigger: Future<U>,
 	destroyTrigger: Future<V>
 ): Behavior<Behavior<Future<Action>>> =>
-	nextOccurrenceFrom(stateChanges).map((nextDeploy) => {
-		nextDeploy.activate(tick()); // Required to ensure occurrences are buffered before inner behavior is sampled
-		return fromFunction(() =>
-			destroyTrigger
-				.mapTo<Action>('destroy')
-				.combine(terminateTrigger.mapTo('terminate'))
-				.combine(nextDeploy.mapTo('deploy'))
-		);
+	nextOccurrenceFrom(stateChanges).map((stateChange) => {
+		const deploy = stateChange.mapTo('deploy' as Action);
+		const terminate = terminateTrigger.mapTo('terminate' as Action);
+		const destroy = destroyTrigger.mapTo('destroy' as Action);
+
+		return stepTo('noop', deploy)
+			.flatMap((action) => stepTo(action, terminate))
+			.flatMap((action) => stepTo(action, destroy))
+			.map((action) =>
+				action !== 'noop' ? Future.of(action) : destroy.combine(terminate).combine(deploy)
+			);
 	});
 
 /**
