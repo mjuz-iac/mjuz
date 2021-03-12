@@ -25,6 +25,7 @@
     "lint": "eslint . --ext .ts",
     "prepublish": "npm run clean && npm run build",
     "test-unit": "jest --testMatch '**/*.test.ts'",
+    "test-unit-exhaustive": "jest --testMatch '**/*.test.ts' --setupTestFrameworkScriptFile='./exhaustive-fast-check.config.ts'",
     "test-integration": "PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand --testMatch '**/*.itest.ts'",
     "test-integration-manual": "find . -name \\*.mtest.ts -type f -print0 | PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 xargs -n 1 -0 ts-node",
     "test": "npm run test-integration-manual && PULUMI_CONFIG_PASSPHRASE= PULUMI_DEBUG_PROMISE_LEAKS=1 jest --runInBand"
