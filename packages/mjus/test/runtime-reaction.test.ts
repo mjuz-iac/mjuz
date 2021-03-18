@@ -1,9 +1,23 @@
 import { Action, reactionLoop, nextAction } from '../src';
-import { fromFunction, Future, getTime, never, Stream, tick } from '@funkia/hareactive';
-import { IO, runIO } from '@funkia/io';
+import {
+	Behavior,
+	fromFunction,
+	Future,
+	getTime,
+	performStream,
+	runNow,
+	never,
+	sample,
+	stepper,
+	Stream,
+	toPromise,
+} from '@funkia/hareactive';
+import { IO } from '@funkia/io';
 import { assertFutureEqual, testAt, testFuture } from '@funkia/hareactive/testing';
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
+import { Logger } from 'pino';
+import { instance, mock } from 'ts-mockito';
 import {
 	futureArb,
 	FutureArbConstraints,
@@ -95,47 +109,59 @@ describe('reaction runtime', () => {
 		});
 	});
 
-	describe('loop', () => {
-		let operationTime = 0;
+	describe('reaction loop', () => {
+		test('init, deploy n times and complete after first destroy or terminate', () => {
+			const deployActionArb = fc.constant<Action>('deploy');
+			const finalActionArb = fc.oneof(
+				fc.constant<Action>('terminate'),
+				fc.constant<Action>('destroy')
+			);
 
-		const operations = (action: Action) => (s: string) => {
-			tick();
-			operationTime = getTime();
-			return IO.of(s + action.slice(0, 3));
-		};
-		let remainingActions: Action[] = [];
-		const nextAction = fromFunction((t1) =>
-			fromFunction((t2) => {
-				expect(t1).toBeLessThan(operationTime);
-				expect(t2).toBeGreaterThan(operationTime);
-				const action = remainingActions[0];
-				remainingActions = remainingActions.slice(1);
-				return Future.of(action);
-			})
-		);
+			const pred = async (nextActions: Action[]) => {
+				const actions = [
+					'deploy', // On init 'deploy' is executed once
+					...nextActions.slice(0, nextActions.findIndex((a) => a !== 'deploy') + 1),
+				];
+				let lastOpTime = -Infinity;
+				const expectedOperations = actions.slice().reverse();
+				const operations = (action: Action) => (s: string) => {
+					lastOpTime = getTime();
+					expect(action).toBe(expectedOperations.pop());
+					return IO.of(s + action);
+				};
 
-		test('direct destroy', () => {
-			remainingActions = ['destroy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
-			return expect(runIO(l)).resolves.toBe('Idepdes');
-		});
+				const expectedNextActions = nextActions.slice().reverse();
+				const nextAction: Behavior<Behavior<Future<Action>>> = fromFunction((t1) =>
+					fromFunction((t2) => {
+						expect(t1).toEqual(lastOpTime);
+						expect(t2).toBeGreaterThan(t1);
+						const action = expectedNextActions.pop();
+						if (!action) throw new Error('Unexpected invocation of nextAction');
+						else return Future.of(action);
+					})
+				);
+				const logger = instance(mock<Logger>());
+				const [ops, completed] = reactionLoop(IO.of('I'), operations, nextAction, logger);
 
-		test('direct terminate', () => {
-			remainingActions = ['terminate'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
-			return expect(runIO(l)).resolves.toBe('Idepter');
-		});
+				const exec = runNow(performStream(ops).flatMap((s) => stepper(never, s)));
+				await toPromise(completed);
+				const finalState = await toPromise(runNow(sample(exec)));
+				expect(finalState).toBe(`I${actions.join('')}`);
+			};
 
-		test('deploy and terminate', () => {
-			remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
-			return expect(runIO(l)).resolves.toBe('Idepdepdepter');
-		});
-
-		test('deploy and destroy', () => {
-			remainingActions = ['deploy', 'deploy', 'destroy', 'deploy'];
-			const l = reactionLoop(() => IO.of('I'), operations, nextAction)[0];
-			return expect(runIO(l)).resolves.toBe('Idepdepdepdes');
+			return fc.assert(
+				fc.asyncProperty(
+					fc.array(
+						fc.frequency(
+							{ arbitrary: deployActionArb, weight: 10 },
+							{ arbitrary: finalActionArb, weight: 1 }
+						),
+						{ maxLength: 100 }
+					),
+					finalActionArb,
+					async (actions, lastAction) => pred([...actions, lastAction])
+				)
+			);
 		});
 	});
 });

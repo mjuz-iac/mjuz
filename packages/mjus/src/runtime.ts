@@ -1,5 +1,16 @@
-import { IO, runIO } from '@funkia/io';
-import { Behavior, Future, sinkFuture, Stream } from '@funkia/hareactive';
+import { IO } from '@funkia/io';
+import {
+	Behavior,
+	flatFutures,
+	Future,
+	nextOccurrenceFrom,
+	performStream,
+	runNow,
+	sample,
+	sinkFuture,
+	Stream,
+	toPromise,
+} from '@funkia/hareactive';
 import { Action, newLogger, reactionLoop, startResourcesService } from '.';
 import * as yargs from 'yargs';
 import { startDeploymentService } from './deployment-service';
@@ -71,13 +82,16 @@ export const runDeployment = <S>(
 			opts.heartbeatInterval
 		);
 
-		const [loop, deploymentInitialized] = reactionLoop(
-			initOperation,
+		const [stackActions, completed] = reactionLoop(
+			initOperation(),
 			operations,
 			nextAction(offersRuntime.inboundOfferUpdates)
 		);
-		deploymentInitialized.subscribe(() => initialized.resolve());
-		const finalStack = await runIO(loop);
+		const stacks = runNow(performStream(stackActions));
+		runNow(flatFutures(stacks).map(nextOccurrenceFrom).flatMap(sample)).subscribe(() =>
+			initialized.resolve()
+		);
+		const finalStack = await toPromise(completed);
 		await Promise.all([
 			resourcesService.stop(),
 			deploymentService.stop(),

@@ -2,6 +2,7 @@ import {
 	Behavior,
 	Future,
 	nextOccurrenceFrom,
+	producerStream,
 	runNow,
 	sample,
 	sinkFuture,
@@ -11,6 +12,7 @@ import {
 } from '@funkia/hareactive';
 import { call, callP, IO } from '@funkia/io';
 import { newLogger } from './logging';
+import { Logger } from 'pino';
 
 type FinalAction = 'terminate' | 'destroy';
 const isFinalAction = (v: string): v is FinalAction => {
@@ -46,47 +48,53 @@ export const nextAction = <T, U, V>(
 
 /**
  * Reactive main loop.
- * @param initOperation Returns state initialization operation.
- * @param operations Maps each action to a function the current state to the action's operation.
+ * @param initOperation State initialization operation.
+ * @param operations Maps each action to a function of the current state to the action's operation.
  * @param nextAction Evaluates subsequent actions. First moment is sampled when current action is started, second moment
  * is sampled when current action completed. Future is expected to resolve after the second moment.
- * @return IO operations and future that resolves after the first stack deployment succeeded.
+ * @param logger
+ * @return Stream of the IO operations and future that resolves with the final state after the final operation.
  */
 export const reactionLoop = <S>(
-	initOperation: () => IO<S>,
+	initOperation: IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
-	nextAction: Behavior<Behavior<Future<Action>>>
-): [IO<S>, Future<void>] => {
-	const logger = newLogger('reaction loop');
-	const initialized = sinkFuture<void>();
+	nextAction: Behavior<Behavior<Future<Action>>>,
+	logger: Logger = newLogger('reaction loop')
+): [Stream<IO<S>>, Future<S>] => {
+	const completed = sinkFuture<S>();
+	const actions = producerStream<IO<S>>((push) => {
+		const recurse = (bufferingNextAction: Behavior<Future<Action>>, state: S): IO<S> =>
+			callP(() => toPromise(runNow(sample(bufferingNextAction)))).flatMap((action) =>
+				call(() => runNow(sample(nextAction))).flatMap((bufferingNextAction) =>
+					call(() => logger.info(`Staring ${action}`))
+						.flatMap(() => operations(action)(state))
+						.flatMap((newState) =>
+							call(() => {
+								logger.info(`Completed ${action}`);
+								if (isFinalAction(action)) {
+									actions.deactivate(true);
+									completed.resolve(newState);
+								} else {
+									logger.info(`Waiting for next action`);
+									push(recurse(bufferingNextAction, newState));
+								}
+								return newState;
+							})
+						)
+				)
+			);
 
-	const recurse = (
-		bufferingNextAction: Behavior<Future<Action>>,
-		state: S,
-		initialRun = false
-	): IO<S> =>
-		call(() => logger.info(`Waiting for next action`))
-			.flatMap(() => callP(() => toPromise(runNow(sample(bufferingNextAction)))))
-			.flatMap((action) => {
-				// Start buffering next action
-				const bufferingNextAction = runNow(sample(nextAction));
-				logger.info(`Running action ${action}`);
-				return operations(action)(state).flatMap((newState) => {
-					logger.info(`Completed action ${action}`);
-					if (initialRun) initialized.resolve();
-					return isFinalAction(action)
-						? IO.of(newState)
-						: recurse(bufferingNextAction, newState);
-				});
+		const init = call(() => logger.info('Initializing'))
+			.flatMap(() => initOperation)
+			.flatMap((state) => {
+				logger.info('Completed initializing');
+				return recurse(Behavior.of(Future.of('deploy')), state);
 			});
 
-	return [
-		call(() => logger.info('Initializing stack'))
-			.flatMap(initOperation)
-			.flatMap((state) => {
-				logger.info('Completed initializing state, triggering deploy');
-				return recurse(Behavior.of(Future.of('deploy')), state, true);
-			}),
-		initialized,
-	];
+		push(init);
+		return () => {
+			// Intended to be empty
+		};
+	});
+	return [actions, completed];
 };
