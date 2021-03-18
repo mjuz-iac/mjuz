@@ -77,16 +77,15 @@ const program = (state: State): PulumiFn => async () => {
 	};
 };
 
-const initStack = () =>
-	getStack(
-		{
-			program: emptyProgram,
-			projectName: 'CentralizedWebPage',
-			stackName: 'CentralizedWebPage',
-		},
-		undefined,
-		{ 'aws:region': { value: 'us-east-1' } }
-	);
+const initStack = getStack(
+	{
+		program: emptyProgram,
+		projectName: 'CentralizedWebPage',
+		stackName: 'CentralizedWebPage',
+	},
+	undefined,
+	{ 'aws:region': { value: 'us-east-1' } }
+);
 
 runDeployment(initStack, operations(programState.map(program)), (offerUpdates) =>
 	nextAction(

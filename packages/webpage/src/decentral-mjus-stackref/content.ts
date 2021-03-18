@@ -36,19 +36,18 @@ const program = async () => {
 	});
 };
 
-const initStack = () =>
-	getStack(
-		{
-			program: emptyProgram,
-			projectName: 'DecentralizedWebPageContent',
-			stackName: 'DecentralizedWebPageContent',
-		},
-		undefined,
-		{
-			'aws:region': { value: 'us-east-1' },
-			bucketStack: { value: 'DecentralizedWebPageBucket' },
-		}
-	);
+const initStack = getStack(
+	{
+		program: emptyProgram,
+		projectName: 'DecentralizedWebPageContent',
+		stackName: 'DecentralizedWebPageContent',
+	},
+	undefined,
+	{
+		'aws:region': { value: 'us-east-1' },
+		bucketStack: { value: 'DecentralizedWebPageBucket' },
+	}
+);
 
 runDeployment(initStack, operations(Behavior.of(program)), (offerUpdates) =>
 	nextAction(offerUpdates, sigint(), sigterm())

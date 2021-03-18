@@ -19,13 +19,7 @@ describe('runtime', () => {
 		remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
 
 		return expect(
-			runDeployment(
-				() => IO.of('I'),
-				operations,
-				() => nextAction,
-				undefined,
-				true
-			)
+			runDeployment(IO.of('I'), operations, () => nextAction, undefined, true)
 		).resolves.toBe('Idepdepdepter');
 	});
 });

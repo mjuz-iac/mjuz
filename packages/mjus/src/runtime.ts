@@ -61,7 +61,7 @@ const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 	}).argv;
 
 export const runDeployment = <S>(
-	initOperation: () => IO<S>,
+	initOperation: IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: (offerUpdates: Stream<void>) => Behavior<Behavior<Future<Action>>>,
 	options?: Partial<RuntimeOptions>,
@@ -83,7 +83,7 @@ export const runDeployment = <S>(
 		);
 
 		const [stackActions, completed] = reactionLoop(
-			initOperation(),
+			initOperation,
 			operations,
 			nextAction(offersRuntime.inboundOfferUpdates)
 		);

@@ -49,16 +49,15 @@ const program = async () => {
 	};
 };
 
-const initStack = () =>
-	getStack(
-		{
-			program: emptyProgram,
-			projectName: 'DecentralizedWebPageBucket',
-			stackName: 'DecentralizedWebPageBucket',
-		},
-		{ workDir: '.' },
-		{ 'aws:region': { value: 'us-east-1' } }
-	);
+const initStack = getStack(
+	{
+		program: emptyProgram,
+		projectName: 'DecentralizedWebPageBucket',
+		stackName: 'DecentralizedWebPageBucket',
+	},
+	{ workDir: '.' },
+	{ 'aws:region': { value: 'us-east-1' } }
+);
 
 runDeployment(
 	initStack,
