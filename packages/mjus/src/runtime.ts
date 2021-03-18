@@ -11,10 +11,15 @@ import {
 	Stream,
 	toPromise,
 } from '@funkia/hareactive';
-import { Action, newLogger, reactionLoop, startResourcesService } from '.';
+import {
+	Action,
+	newLogger,
+	reactionLoop,
+	startDeploymentService,
+	startOffersRuntime,
+	startResourcesService,
+} from '.';
 import * as yargs from 'yargs';
-import { startDeploymentService } from './deployment-service';
-import { startOffersRuntime } from './runtime-offers';
 
 const logger = newLogger('runtime');
 
