@@ -1,16 +1,25 @@
 import { deploy, destroy, emptyProgram, getStack, Stack } from '../src/pulumi';
 import { runIO } from '@funkia/io';
 import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
+import { Logger } from 'pino';
+import { instance, mock } from 'ts-mockito';
 
 describe('pulumi', () => {
+	const logger = instance(mock<Logger>());
+
+	const getStackC = getStack(
+		{
+			stackName: 'testStack',
+			projectName: 'testProject',
+			program: emptyProgram,
+		},
+		{},
+		{},
+		logger
+	);
+
 	afterEach(() => {
 		return LocalWorkspace.create({}).then((workspace) => workspace.removeStack('testStack'));
-	});
-
-	const getStackC = getStack({
-		stackName: 'testStack',
-		projectName: 'testProject',
-		program: emptyProgram,
 	});
 
 	describe('get stack', () => {
@@ -38,7 +47,7 @@ describe('pulumi', () => {
 
 		test('Destroy stack', () => {
 			return expect(
-				runIO(destroy(<Stack>stack)).then((stack) => {
+				runIO(destroy(<Stack>stack, logger)).then((stack) => {
 					return {
 						name: stack.stack.name,
 						isDeployed: stack.isDeployed,
@@ -60,7 +69,7 @@ describe('pulumi', () => {
 
 		test('Deploy stack', () => {
 			return expect(
-				runIO(deploy(<Stack>stack, emptyProgram)).then((stack) => {
+				runIO(deploy(<Stack>stack, emptyProgram, logger)).then((stack) => {
 					return {
 						name: stack.stack.name,
 						isDeployed: stack.isDeployed,

@@ -19,14 +19,19 @@ import {
 } from '@funkia/hareactive';
 import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
 import { Logger } from 'pino';
-import { instance, mock } from 'ts-mockito';
+import { anything, instance, mock, when } from 'ts-mockito';
 
 describe('reaction runtime and pulumi integration', () => {
-	const initOperation = getStack({
-		stackName: 'testStack',
-		projectName: 'testProject',
-		program: emptyProgram,
-	});
+	const initOperation = getStack(
+		{
+			stackName: 'testStack',
+			projectName: 'testProject',
+			program: emptyProgram,
+		},
+		{},
+		{},
+		instance(mock<Logger>())
+	);
 	const simplifyStack = (stack: Stack) => {
 		return {
 			name: stack.stack.name,
@@ -34,6 +39,9 @@ describe('reaction runtime and pulumi integration', () => {
 			isDestroyed: stack.isDestroyed,
 		};
 	};
+	const loggerMock = mock<Logger>();
+	when(loggerMock.child(anything())).thenReturn(instance(mock<Logger>()));
+	const logger = instance(loggerMock);
 
 	afterEach(() => {
 		return runIO(initOperation)
@@ -50,10 +58,10 @@ describe('reaction runtime and pulumi integration', () => {
 			(action: Action) => {
 				ops++;
 				if (ops === 1) terminate.resolve(true);
-				return operations(Behavior.of(emptyProgram))(action);
+				return operations(Behavior.of(emptyProgram), logger)(action);
 			},
 			nextAction(empty, terminate, sinkFuture()),
-			instance(mock<Logger>())
+			logger
 		);
 		runNow(performStream(stackActions));
 		return expect(toPromise(completed.map(simplifyStack)))
@@ -71,10 +79,10 @@ describe('reaction runtime and pulumi integration', () => {
 				ops++;
 				if (ops < 3) stateChanges.push(true);
 				if (ops === 3) terminate.resolve(true);
-				return operations(Behavior.of(emptyProgram))(action);
+				return operations(Behavior.of(emptyProgram), logger)(action);
 			},
 			nextAction(stateChanges, terminate, sinkFuture()),
-			instance(mock<Logger>())
+			logger
 		);
 		runNow(performStream(stackActions));
 		return expect(toPromise(completed.map(simplifyStack)))
@@ -90,10 +98,10 @@ describe('reaction runtime and pulumi integration', () => {
 			(action: Action) => {
 				ops++;
 				if (ops === 1) destroy.resolve(true);
-				return operations(Behavior.of(emptyProgram))(action);
+				return operations(Behavior.of(emptyProgram), logger)(action);
 			},
 			nextAction(empty, sinkFuture(), destroy),
-			instance(mock<Logger>())
+			logger
 		);
 		runNow(performStream(stackActions));
 		return expect(toPromise(completed.map(simplifyStack)))
@@ -111,10 +119,10 @@ describe('reaction runtime and pulumi integration', () => {
 				ops++;
 				if (ops < 3) stateChanges.push(true);
 				if (ops === 3) destroy.resolve(true);
-				return operations(Behavior.of(emptyProgram))(action);
+				return operations(Behavior.of(emptyProgram), logger)(action);
 			},
 			nextAction(stateChanges, sinkFuture(), destroy),
-			instance(mock<Logger>())
+			logger
 		);
 		runNow(performStream(stackActions));
 		return expect(toPromise(completed.map(simplifyStack)))
