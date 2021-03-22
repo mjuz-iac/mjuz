@@ -1,7 +1,6 @@
-import { call, callP, IO, throwE, withEffectsP } from '@funkia/io';
+import { Behavior, runNow, sample } from '@funkia/hareactive';
+import { call, IO, throwE, withEffectsP } from '@funkia/io';
 import * as pulumi from '@pulumi/pulumi/x/automation';
-import { newLogger } from './logging';
-import { Logger } from 'pino';
 import {
 	ConfigMap,
 	InlineProgramArgs,
@@ -9,8 +8,8 @@ import {
 	LocalWorkspaceOptions,
 	PulumiFn,
 } from '@pulumi/pulumi/x/automation';
-import { Action } from '.';
-import { Behavior, runNow, sample } from '@funkia/hareactive';
+import { Logger } from 'pino';
+import { Action, newLogger } from '.';
 
 export const emptyProgram: PulumiFn = async () => {
 	// Empty program
@@ -22,9 +21,12 @@ export type Stack = {
 	readonly isDestroyed: boolean;
 };
 
-const pulumiCreateOrSelectStack = withEffectsP(
+export const pulumiCreateOrSelectStack = withEffectsP(
 	(args: InlineProgramArgs, workspaceOptions?: LocalWorkspaceOptions) =>
 		LocalWorkspace.createOrSelectStack(args, workspaceOptions)
+);
+export const pulumiSetStackConfig = withEffectsP((stack: pulumi.Stack, config: ConfigMap) =>
+	stack.setAllConfig(config)
 );
 
 export const getStack = (
@@ -36,14 +38,14 @@ export const getStack = (
 	call(() => logger.debug(`Getting stack ${args.stackName}`))
 		.flatMap(() => pulumiCreateOrSelectStack(args, workspaceOptions))
 		.flatMap((stack: pulumi.Stack) =>
-			config ? callP(() => stack.setAllConfig(config)).map(() => stack) : IO.of(stack)
+			config ? pulumiSetStackConfig(stack, config).map(() => stack) : IO.of(stack)
 		)
 		.map((stack) => {
 			logger.debug(`Completed getting stack ${stack.name}`);
 			return { stack: stack, isDeployed: false, isDestroyed: false };
 		});
 
-const pulumiUp = withEffectsP((stack: pulumi.Stack, program: PulumiFn, logger: Logger) =>
+export const pulumiUp = withEffectsP((stack: pulumi.Stack, program: PulumiFn, logger: Logger) =>
 	stack.up({
 		program: program,
 		onOutput: (m) => logger.debug(m.replace(/[\n\r]/g, '')),
@@ -65,7 +67,7 @@ export const deploy = (stack: Stack, targetState: PulumiFn, logger: Logger): IO<
 			};
 		});
 
-const pulumiDestroy = withEffectsP((stack: pulumi.Stack, logger: Logger) =>
+export const pulumiDestroy = withEffectsP((stack: pulumi.Stack, logger: Logger) =>
 	stack.destroy({ onOutput: (m) => logger.debug(m.replace(/[\n\r]/g, '')) })
 );
 
