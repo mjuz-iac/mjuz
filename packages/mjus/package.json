@@ -45,8 +45,8 @@
     "collectCoverage": true
   },
   "devDependencies": {
-    "@funkia/hareactive": "git://github.com/dsoko2/hareactive#c87a1b93d3c759bd0eb2ad2daaf38c82f2356e0a",
-    "@funkia/io": "0.0.5",
+    "@funkia/hareactive": "git://github.com/dsoko2/hareactive#8b1f46f5f6b1bc5846d8ea1a8097b58e4726d985",
+    "@funkia/io": "git://github.com/dsoko2/io#0573c2330cfcfdb3df570a2b3a4c2b33ff71b3f3",
     "@pulumi/pulumi": "2.21.1",
     "@types/google-protobuf": "3.7.4",
     "@types/jest": "26.0.20",

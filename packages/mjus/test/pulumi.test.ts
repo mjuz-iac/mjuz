@@ -1,4 +1,4 @@
-import { call, IO, testIO } from '@funkia/io';
+import { call, catchE, IO, testIO } from '@funkia/io';
 import { Behavior } from '@funkia/hareactive';
 import * as pulumi from '@pulumi/pulumi/x/automation';
 import * as fc from 'fast-check';
@@ -99,20 +99,24 @@ describe('pulumi', () => {
 
 	test('destroy', () => {
 		const pred = (stack: Stack) => {
-			// @todo this test does not cover error scenarios, need to improve Hareactive's testIO()
-			testIO(
-				destroy(stack, logger),
-				[
-					// eslint-disable-next-line @typescript-eslint/no-empty-function
-					[call(() => {}), undefined],
-					[pulumiDestroy(stack.stack, logger), {}],
-				],
-				{
-					stack: stack.stack,
-					isDeployed: false,
-					isDestroyed: true,
-				}
-			);
+			if (stack.isDestroyed)
+				expect(() => testIO(destroy(stack, logger), [], undefined)).toThrow(
+					'Stack terminated already'
+				);
+			else
+				testIO(
+					destroy(stack, logger),
+					[
+						// eslint-disable-next-line @typescript-eslint/no-empty-function
+						[call(() => {}), undefined],
+						[pulumiDestroy(stack.stack, logger), {}],
+					],
+					{
+						stack: stack.stack,
+						isDeployed: false,
+						isDestroyed: true,
+					}
+				);
 		};
 
 		fc.assert(fc.property(stackArb(stack), pred));
