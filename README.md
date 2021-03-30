@@ -50,7 +50,11 @@ This is required for dynamic resources (as used by µs) and more.
 The current workaround is not to use jest for such integration tests.
 More details on this issue: https://github.com/pulumi/pulumi/issues/3799
 
-## GRPC fail in dynmiac resource
+This problem is solved by [PR6648](https://github.com/pulumi/pulumi/pull/6648).
+The patch is applied to this repository using patch-package.
+It be removed once [PR6648](https://github.com/pulumi/pulumi/pull/6648) is in the used Pulumi release.
+
+## GRPC fail in dynamic resource
 
 The Pulumi resource serialization breaks generated gRPC code.
 To solve this issue, the generated gRPC source is outsourced to `@mjus/grpc-protos`
