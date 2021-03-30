@@ -39,8 +39,8 @@
     "@funkia/hareactive": "git://github.com/dsoko2/hareactive#8b1f46f5f6b1bc5846d8ea1a8097b58e4726d985",
     "@funkia/io": "git://github.com/dsoko2/io#0573c2330cfcfdb3df570a2b3a4c2b33ff71b3f3",
     "@mjus/core": "0.0.0",
-    "@pulumi/aws": "3.30.0",
-    "@pulumi/pulumi": "2.21.1",
+    "@pulumi/aws": "3.34.2",
+    "@pulumi/pulumi": "2.23.2",
     "pino": "6.11.1"
   }
 }
