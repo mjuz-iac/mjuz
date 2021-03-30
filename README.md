@@ -4,23 +4,18 @@ Decentralized Deployments IaC using Pulumi and TypeScript.
 
 ## Structure
 
-`└─ packages`\
-`   └─ mjus` µs\
-`   └─ teastore` TeaStore Case Study\
-`   └─ webpage` Webpage Case Study\
+`├── mjus-core` µs core SDK and runtime\
+`├── mjus-grpc-protos` µs GRPC prototype definitions\
+`├── patches` manual patches applied to dependencies (mostly quick-fixes)\
+`├── teastore` TeaStore Case Study\
+`└── webpage` Webpage Case Study
 
 ## Development Setup
 
-Setup and link all dependencies for development:
+Setup, link all dependencies and apply patches for development:
 
 ```
-npm install
-```
-
-Remove all dependencies
-
-```
-npm run clean
+yarn install
 ```
 
 # Problems (and Solution)

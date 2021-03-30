@@ -2,11 +2,15 @@
   "name": "root",
   "private": true,
   "scripts": {
-    "postinstall": "lerna bootstrap --hoist && patch-package && rm packages/mjus/node_modules/@mjus/grpc-protos && cp -r packages/grpc-protos packages/mjus/node_modules/@mjus && rm -rf packages/webpage/node_modules/@mjus/grpc-protos && cp -r packages/grpc-protos packages/webpage/node_modules/@mjus",
-    "clean": "lerna clean -y"
+    "postinstall": "patch-package"
   },
   "devDependencies": {
-    "lerna": "^3.22.1",
     "patch-package": "^6.2.2"
-  }
+  },
+  "workspaces": [
+    "mjus-core",
+    "mjus-grpc-protos",
+    "teastore",
+    "webpage"
+  ]
 }

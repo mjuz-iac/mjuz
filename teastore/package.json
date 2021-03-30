@@ -39,7 +39,7 @@
   "dependencies": {
     "@funkia/hareactive": "git://github.com/dsoko2/hareactive#8b1f46f5f6b1bc5846d8ea1a8097b58e4726d985",
     "@funkia/io": "git://github.com/dsoko2/io#0573c2330cfcfdb3df570a2b3a4c2b33ff71b3f3",
-    "@funkia/io": "0.0.5",
+    "@grpc/grpc-js": "1.2.8",
     "@mjus/core": "0.0.0",
     "@pulumi/aws": "3.34.2",
     "@pulumi/awsx": "0.26.0",
