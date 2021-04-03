@@ -1,6 +1,6 @@
 import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/x/automation';
-import { Offer, RemoteConnection } from '../../src/resources';
-import { emptyProgram, ResourcesService, startResourcesService } from '../../src';
+import { Offer, RemoteConnection, Wish } from '../../src/resources';
+import { emptyProgram, ResourcesService, startResourcesService, toRpcWish } from '../../src';
 
 describe('resources', () => {
 	let stack: Stack;
@@ -101,6 +101,31 @@ describe('resources', () => {
 					'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"],"newField":5},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
 				);
 			}
+		});
+	});
+
+	describe('wish', () => {
+		test('deploy unsatisfied wishes', async () => {
+			const program: PulumiFn = async () => {
+				const r = new RemoteConnection('testRemote', {});
+				const w1 = new Wish(r, 'testWish', undefined);
+				const w2 = new Wish('directlyNamedTestWish', {
+					offerName: 'testWish',
+					target: r,
+				});
+				return { w1, w2 };
+			};
+			// Respond that wishes are unsatisfied on poll
+			resourcesService.wishPolled.subscribe((p) => p[1](null, toRpcWish(p[0])));
+
+			const { outputs } = await stack.up({ program });
+			expect(JSON.stringify(outputs)).toBe(
+				'{"w1":{"value":{"error":null,"id":"testRemote:testWish","isSatisfied":false,"offer":null,"offerName":"te' +
+					'stWish","target":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::' +
+					'testRemote:testWish"},"secret":false},"w2":{"value":{"error":null,"id":"testRemote:testWish","isSatisfie' +
+					'd":false,"offer":null,"offerName":"testWish","target":"testRemote","urn":"urn:pulumi:testStack::testProj' +
+					'ect::pulumi-nodejs:dynamic:Resource::directlyNamedTestWish"},"secret":false}}'
+			);
 		});
 	});
 });
