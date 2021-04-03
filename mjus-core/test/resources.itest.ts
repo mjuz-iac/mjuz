@@ -1,6 +1,6 @@
 import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/x/automation';
-import { Offer, RemoteConnection, Wish } from '../../src/resources';
-import { emptyProgram, ResourcesService, startResourcesService, toRpcWish } from '../../src';
+import { Offer, RemoteConnection, Wish } from '../src/resources';
+import { emptyProgram, ResourcesService, startResourcesService, toRpcWish } from '../src';
 
 describe('resources', () => {
 	let stack: Stack;
