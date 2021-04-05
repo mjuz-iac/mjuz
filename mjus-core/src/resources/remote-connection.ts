@@ -10,14 +10,14 @@ import { createRemote, deleteRemote } from '../resources-service';
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 19952;
 
-type RemoteConnectionProps = {
+export type RemoteConnectionProps = {
 	name: string;
 	host: string;
 	port: number;
 	error: string | null; // Workaround to indicate error in resource provider
 };
 
-const remoteConnectionProvider: dynamic.ResourceProvider = {
+export class RemoteConnectionProvider implements dynamic.ResourceProvider {
 	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
 	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
 	// input property.
@@ -40,7 +40,7 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 		} catch (e) {
 			return { id: inputs.name, outs: { ...inputs, error: e.message } };
 		}
-	},
+	}
 
 	async diff(
 		id: ID,
@@ -54,31 +54,21 @@ const remoteConnectionProvider: dynamic.ResourceProvider = {
 			) as string[],
 			deleteBeforeReplace: true,
 		};
-	},
+	}
 
 	async update(
 		id: ID,
 		oldProps: RemoteConnectionProps,
 		newProps: RemoteConnectionProps
 	): Promise<dynamic.UpdateResult> {
-		const remote = new rpc.Remote()
-			.setId(newProps.name)
-			.setHost(newProps.host)
-			.setPort(newProps.port);
-		await createRemote(remote);
-
-		const outProps: RemoteConnectionProps = {
-			...newProps,
-			error: null,
-		};
-		return { outs: outProps };
-	},
+		return this.create(newProps);
+	}
 
 	async delete(id: ID): Promise<void> {
 		const remote = new rpc.Remote().setId(id);
 		await deleteRemote(remote);
-	},
-};
+	}
+}
 
 export type RemoteConnectionArgs = Partial<
 	WrappedInputs<Omit<RemoteConnectionProps, 'name' | 'error'>>
@@ -93,7 +83,7 @@ export class RemoteConnection extends dynamic.Resource implements RemoteConnecti
 			name: name,
 			error: null,
 		};
-		super(remoteConnectionProvider, name, props, opts);
+		super(new RemoteConnectionProvider(), name, props, opts);
 		this.name = name;
 	}
 
