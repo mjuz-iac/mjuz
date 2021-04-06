@@ -6,14 +6,17 @@ import { RemoteConnection } from './remote-connection';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { isDeepStrictEqual } from 'util';
 
-type OfferProps<O> = {
+export type OfferProps<O> = {
 	beneficiary: RemoteConnection;
 	offerName: string;
 	offer: O;
 	error: string | null; // Workaround to indicate error in resource provider
 };
 
-class OfferProvider<O> implements dynamic.ResourceProvider {
+export class OfferProvider<O> implements dynamic.ResourceProvider {
+	private static offerToValue = <O>(offer: O): Value =>
+		Value.fromJavaScript(offer === undefined ? null : offer);
+
 	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
 	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
 	// input property.
@@ -24,7 +27,7 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 			const offer = new rpc.Offer()
 				.setName(inputs.offerName)
 				.setBeneficiaryid(`${inputs.beneficiary}`)
-				.setOffer(Value.fromJavaScript(inputs.offer || null));
+				.setOffer(OfferProvider.offerToValue(inputs.offer));
 			await updateOffer(offer);
 
 			const outProps: OfferProps<O> = {
@@ -45,22 +48,20 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 		oldProps: OfferProps<O>,
 		newProps: OfferProps<O>
 	): Promise<dynamic.DiffResult> {
-		const targetChanged =
-			oldProps.beneficiary !== newProps.beneficiary ||
-			oldProps.offerName !== newProps.offerName;
-		const offerChanged = targetChanged || !isDeepStrictEqual(oldProps.offer, newProps.offer);
 		const offer = new rpc.Offer()
 			.setName(oldProps.offerName)
 			.setBeneficiaryid(`${oldProps.beneficiary}`)
-			.setOffer(Value.fromJavaScript(oldProps.offer || null));
+			.setOffer(OfferProvider.offerToValue(oldProps.offer));
 		await refreshOffer(offer);
+		const replaces = [
+			...(oldProps.beneficiary !== newProps.beneficiary ? ['beneficiary'] : []),
+			...(oldProps.offerName !== newProps.offerName ? ['offerName'] : []),
+		];
+		const offerChanged = !isDeepStrictEqual(oldProps.offer, newProps.offer);
 
 		return {
-			changes: offerChanged,
-			replaces: [
-				oldProps.beneficiary !== newProps.beneficiary ? 'beneficiary' : null,
-				oldProps.offerName !== newProps.offerName ? 'offerName' : null,
-			].filter((v) => v !== null) as string[],
+			changes: replaces.length > 0 || offerChanged,
+			replaces,
 			deleteBeforeReplace: true,
 		};
 	}
@@ -74,7 +75,7 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 			const offer = new rpc.Offer()
 				.setName(newProps.offerName)
 				.setBeneficiaryid(`${newProps.beneficiary}`)
-				.setOffer(Value.fromJavaScript(newProps.offer || null));
+				.setOffer(OfferProvider.offerToValue(newProps.offer));
 			await updateOffer(offer);
 
 			const outProps: OfferProps<O> = {
@@ -91,7 +92,7 @@ class OfferProvider<O> implements dynamic.ResourceProvider {
 		const offer = new rpc.Offer()
 			.setName(inputs.offerName)
 			.setBeneficiaryid(`${inputs.beneficiary}`)
-			.setOffer(Value.fromJavaScript(inputs.offer || null));
+			.setOffer(OfferProvider.offerToValue(inputs.offer));
 		await deleteOffer(offer);
 	}
 }
@@ -119,18 +120,15 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 		] =
 			typeof nameOrBeneficiary === 'string' && typeof argsOrOfferName !== 'string'
 				? [nameOrBeneficiary, argsOrOfferName, <CustomResourceOptions>optsOrOffer]
-				: typeof nameOrBeneficiary !== 'string' && typeof argsOrOfferName === 'string'
-				? [
+				: [
 						`${(<RemoteConnection>nameOrBeneficiary).name}:${argsOrOfferName}`,
 						{
-							beneficiary: nameOrBeneficiary,
-							offerName: argsOrOfferName,
+							beneficiary: nameOrBeneficiary as Input<RemoteConnection>,
+							offerName: argsOrOfferName as string,
 							offer: <Input<O>>optsOrOffer,
 						},
 						opts,
-				  ]
-				: ['invalid offer configuration', undefined, undefined];
-		if (!args) throw new Error('Unsupported offer configuration');
+				  ];
 		const props: WrappedInputs<OfferProps<O>> = {
 			...args,
 			error: null,
