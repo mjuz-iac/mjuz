@@ -398,7 +398,7 @@ export const startOffersRuntime = async (
 	heartbeatInterval: number
 ): Promise<OffersRuntime> => {
 	const remotes: Behavior<Remotes> = runNow(
-		sample(accumRemotes(resources.remoteCreated, resources.remoteDeleted))
+		sample(accumRemotes(resources.remoteUpdated, resources.remoteDeleted))
 	);
 	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval);
 	const outboundOffers: Behavior<Offers> = runNow(

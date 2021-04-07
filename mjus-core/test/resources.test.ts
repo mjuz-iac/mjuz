@@ -161,24 +161,22 @@ describe('resources', () => {
 
 		const testCreateRemoteConnection = async (
 			subject: () => Promise<dynamic.CreateResult | dynamic.UpdateResult>,
-			inputs: RemoteConnectionProps,
+			props: RemoteConnectionProps,
 			fails: boolean
 		) => {
 			const createRemoteSpy = jest
-				.spyOn(resourcesService, 'createRemote')
+				.spyOn(resourcesService, 'updateRemote')
 				.mockImplementation(async (remote) => {
-					const refRemote = new rpc.Remote()
-						.setId(inputs.name)
-						.setHost(inputs.host)
-						.setPort(inputs.port);
-					expect(Message.equals(refRemote, remote)).toBe(true);
-
+					expect(remote).toStrictEqual({
+						id: props.name,
+						host: props.host,
+						port: props.port,
+					} as resourcesService.Remote);
 					if (fails) throw new Error('Test error');
-					return new Empty();
 				});
-			expect(await subject()).toEqual({
-				id: inputs.name,
-				outs: { ...inputs, error: fails ? 'Test error' : null },
+			expect(await subject()).toStrictEqual({
+				id: props.name,
+				outs: { ...props, error: fails ? 'Test error' : null },
 			});
 			expect(createRemoteSpy).toHaveBeenCalledTimes(1);
 			createRemoteSpy.mockRestore();
@@ -245,23 +243,25 @@ describe('resources', () => {
 			});
 		});
 
-		const mockDeleteRemote = (id: ID) =>
-			jest.spyOn(resourcesService, 'deleteRemote').mockImplementation(async (remote) => {
-				const refRemote = new rpc.Remote().setId(id);
-				expect(Message.equals(refRemote, remote)).toBe(true);
-				return new Empty();
-			});
+		const mockDeleteRemote = (props: RemoteConnectionProps) =>
+			jest.spyOn(resourcesService, 'deleteRemote').mockImplementation(async (remote) =>
+				expect(remote).toStrictEqual({
+					id: props.name,
+					host: props.host,
+					port: props.port,
+				} as resourcesService.Remote)
+			);
 
 		test('delete', () => {
-			const pred = async (id: ID) => {
-				const deleteRemoteSpy = mockDeleteRemote(id);
-				await new RemoteConnectionProvider().delete(id);
+			const pred = async (id: ID, props: RemoteConnectionProps) => {
+				const deleteRemoteSpy = mockDeleteRemote(props);
+				await new RemoteConnectionProvider().delete(id, props);
 
 				expect(deleteRemoteSpy).toHaveBeenCalledTimes(1);
 				deleteRemoteSpy.mockRestore();
 			};
 
-			return fc.assert(fc.asyncProperty(fc.string(), pred));
+			return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
 		});
 	});
 });

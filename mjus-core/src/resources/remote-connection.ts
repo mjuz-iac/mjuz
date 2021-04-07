@@ -1,7 +1,6 @@
 import { CustomResourceOptions, dynamic, ID, Output } from '@pulumi/pulumi';
-import * as rpc from '@mjus/grpc-protos';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
-import { createRemote, deleteRemote } from '../resources-service';
+import { updateRemote, deleteRemote } from '../resources-service';
 
 /**
  * Name and id of `RemoteConnection resources equal.
@@ -23,22 +22,18 @@ export class RemoteConnectionProvider implements dynamic.ResourceProvider {
 	// input property.
 
 	async create(
-		inputs: RemoteConnectionProps
+		props: RemoteConnectionProps
 	): Promise<dynamic.CreateResult & { outs: RemoteConnectionProps }> {
 		try {
-			const remote = new rpc.Remote()
-				.setId(inputs.name)
-				.setHost(inputs.host)
-				.setPort(inputs.port);
-			await createRemote(remote);
+			await updateRemote({ id: props.name, host: props.host, port: props.port });
 
 			const outProps: RemoteConnectionProps = {
-				...inputs,
+				...props,
 				error: null,
 			};
-			return { id: inputs.name, outs: outProps };
+			return { id: props.name, outs: outProps };
 		} catch (e) {
-			return { id: inputs.name, outs: { ...inputs, error: e.message } };
+			return { id: props.name, outs: { ...props, error: e.message } };
 		}
 	}
 
@@ -64,9 +59,8 @@ export class RemoteConnectionProvider implements dynamic.ResourceProvider {
 		return this.create(newProps);
 	}
 
-	async delete(id: ID): Promise<void> {
-		const remote = new rpc.Remote().setId(id);
-		await deleteRemote(remote);
+	async delete(id: ID, props: RemoteConnectionProps): Promise<void> {
+		await deleteRemote({ id: props.name, host: props.host, port: props.port });
 	}
 }
 

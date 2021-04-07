@@ -10,6 +10,10 @@ import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 const logger = newLogger('resources service');
 
+export type Remote = rpc.Remote.AsObject;
+export const fromRpcRemote = (remote: rpc.Remote): Remote => remote.toObject();
+export const toRpcRemote = (remote: Remote): rpc.Remote =>
+	new rpc.Remote().setId(remote.id).setHost(remote.host).setPort(remote.port);
 export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish => {
 	const w = new rpc.Wish()
 		.setTargetid(wish.targetid)
@@ -52,10 +56,12 @@ const resourcesClientRpc = <R>(
 			error ? reject(error) : resolve(res);
 		});
 	});
-export const createRemote = (remote: rpc.Remote): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.createRemote(remote, cb));
-export const deleteRemote = (remote: rpc.Remote): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.deleteRemote(remote, cb));
+export const updateRemote = (remote: Remote): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.updateRemote(toRpcRemote(remote), (err) => cb(err)));
+export const refreshRemote = (remote: Remote): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.refreshRemote(toRpcRemote(remote), (err) => cb(err)));
+export const deleteRemote = (remote: Remote): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.deleteRemote(toRpcRemote(remote), (err) => cb(err)));
 export const refreshOffer = (offer: rpc.Offer): Promise<Empty> =>
 	resourcesClientRpc((client, cb) => client.refreshOffer(offer, cb));
 export const updateOffer = (offer: rpc.Offer): Promise<Empty> =>
@@ -71,13 +77,23 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	class ResourcesServer implements rpc.IResourcesServer {
 		[name: string]: grpc.UntypedHandleCall;
 
-		createRemote(
+		updateRemote(
 			call: grpc.ServerUnaryCall<rpc.Remote, Empty>,
 			cb: sendUnaryData<Empty>
 		): void {
 			const remote = call.request as rpc.Remote;
 			logger.info(remote, 'Remote created');
-			remoteCreated.push(remote.toObject());
+			remoteUpdated.push(fromRpcRemote(remote));
+			cb(null, new Empty());
+		}
+
+		refreshRemote(
+			call: grpc.ServerUnaryCall<rpc.Remote, Empty>,
+			cb: sendUnaryData<Empty>
+		): void {
+			const remote = call.request as rpc.Remote;
+			logger.info(remote, 'Remote refreshed');
+			remoteRefreshed.push(fromRpcRemote(remote));
 			cb(null, new Empty());
 		}
 
@@ -87,7 +103,7 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		): void {
 			const remote = call.request as rpc.Remote;
 			logger.info(remote, 'Remote deleted');
-			remoteDeleted.push(remote.toObject());
+			remoteDeleted.push(fromRpcRemote(remote));
 			cb(null, new Empty());
 		}
 
@@ -125,7 +141,8 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		}
 	}
 
-	const remoteCreated = sinkStream<Remote>();
+	const remoteUpdated = sinkStream<Remote>();
+	const remoteRefreshed = sinkStream<Remote>();
 	const remoteDeleted = sinkStream<Remote>();
 	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerUpdated = sinkStream<Offer<unknown>>();
@@ -137,7 +154,8 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 
 	return {
 		server: new ResourcesServer(),
-		remoteCreated,
+		remoteUpdated,
+		remoteRefreshed,
 		remoteDeleted,
 		offerRefreshed,
 		offerUpdated,
@@ -147,11 +165,11 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	};
 };
 
-export type Remote = rpc.Remote.AsObject;
 export type Offer<O> = Omit<rpc.Offer.AsObject, 'offer'> & { offer?: O };
 export type Wish<O> = Omit<rpc.Wish.AsObject, 'offer'> & { offer?: O };
 export type ResourcesService = {
-	remoteCreated: Stream<Remote>;
+	remoteUpdated: Stream<Remote>;
+	remoteRefreshed: Stream<Remote>;
 	remoteDeleted: Stream<Remote>;
 	offerRefreshed: Stream<Offer<unknown>>;
 	offerUpdated: Stream<Offer<unknown>>;

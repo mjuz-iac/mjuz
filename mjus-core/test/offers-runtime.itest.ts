@@ -19,7 +19,8 @@ describe('offers runtime', () => {
 		offerWithdrawn: SinkStream<[DeploymentOffer<unknown>, () => void]>;
 	};
 	let resourcesService: ResourcesService & {
-		remoteCreated: SinkStream<Remote>;
+		remoteUpdated: SinkStream<Remote>;
+		remoteRefreshed: SinkStream<Remote>;
 		remoteDeleted: SinkStream<Remote>;
 		offerRefreshed: SinkStream<Offer<unknown>>;
 		offerUpdated: SinkStream<Offer<unknown>>;
@@ -40,7 +41,8 @@ describe('offers runtime', () => {
 			},
 		};
 		resourcesService = {
-			remoteCreated: sinkStream<Remote>(),
+			remoteUpdated: sinkStream<Remote>(),
+			remoteRefreshed: sinkStream<Remote>(),
 			remoteDeleted: sinkStream<Remote>(),
 			offerRefreshed: sinkStream<Offer<unknown>>(),
 			offerUpdated: sinkStream<Offer<unknown>>(),
@@ -82,7 +84,7 @@ describe('offers runtime', () => {
 			)
 		);
 
-		resourcesService.remoteCreated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
+		resourcesService.remoteUpdated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		resourcesService.offerUpdated.push({
 			beneficiaryid: 'no-remote',
 			name: 'test',
@@ -105,7 +107,7 @@ describe('offers runtime', () => {
 
 	test('resend offers on connect', async () => {
 		await remoteDeploymentService.stop();
-		resourcesService.remoteCreated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
+		resourcesService.remoteUpdated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		resourcesService.offerUpdated.push({
 			beneficiaryid: 'remote',
 			name: 'test',

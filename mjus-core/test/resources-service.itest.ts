@@ -1,15 +1,20 @@
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as rpc from '@mjus/grpc-protos';
 import {
-	createRemote,
+	updateRemote,
 	deleteOffer,
 	deleteRemote,
 	getWish,
+	refreshRemote,
+	Remote,
 	ResourcesService,
 	startResourcesService,
 	updateOffer,
 	wishDeleted,
 } from '../src';
+import { Stream } from '@funkia/hareactive';
+import * as fc from 'fast-check';
+import { Arbitrary } from 'fast-check';
 
 describe('resources service', () => {
 	let resourcesService: ResourcesService;
@@ -24,27 +29,27 @@ describe('resources service', () => {
 		// Intended to be empty
 	});
 
-	test('create remote', async () => {
-		const remote = new rpc.Remote();
-		const received = new Promise((resolve) =>
-			resourcesService.remoteCreated.subscribe((receivedRemote) =>
-				resolve(expect(receivedRemote).toEqual(remote.toObject()))
-			)
-		);
-		await expect(createRemote(remote)).resolves.toEqual(new Empty());
-		await received;
-	});
+	const firstEvent = <R>(stream: Stream<R>) =>
+		new Promise((resolve) => stream.subscribe((firstEvent) => resolve(firstEvent)));
 
-	test('delete remote', async () => {
-		const remote = new rpc.Remote();
-		const received = new Promise((resolve) =>
-			resourcesService.remoteDeleted.subscribe((receivedRemote) =>
-				resolve(expect(receivedRemote).toEqual(remote.toObject()))
-			)
-		);
-		await expect(deleteRemote(remote)).resolves.toEqual(new Empty());
-		await received;
+	const testRpc = async <T>(fn: (v: T) => void, arb: Arbitrary<T>, stream: Stream<T>) => {
+		const pred = async (val: T) => {
+			const received = firstEvent(stream);
+			await fn(val);
+			expect(await received).toEqual(val);
+		};
+		await fc.assert(fc.asyncProperty(arb, pred));
+	};
+
+	const remoteArb: fc.Arbitrary<Remote> = fc.record({
+		id: fc.string(),
+		host: fc.string(),
+		port: fc.nat(),
 	});
+	test('update remote', () => testRpc(updateRemote, remoteArb, resourcesService.remoteUpdated));
+	test('refresh remote', () =>
+		testRpc(refreshRemote, remoteArb, resourcesService.remoteRefreshed));
+	test('delete remote', () => testRpc(deleteRemote, remoteArb, resourcesService.remoteDeleted));
 
 	test('update offer', async () => {
 		const offer = new rpc.Offer();
