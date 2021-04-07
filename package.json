@@ -4,7 +4,7 @@
   "scripts": {
     "build": "yarn workspaces foreach -p run build",
     "clean": "yarn workspaces foreach -p run clean",
-    "install-protos": "yarn workspace @mjus/grpc-protos prepublish && rm node_modules/@mjus/grpc-protos && cp -r mjus-grpc-protos node_modules/@mjus/grpc-protos",
+    "install-protos": "yarn workspace @mjus/grpc-protos prepublish && rm -r node_modules/@mjus/grpc-protos && cp -r mjus-grpc-protos node_modules/@mjus/grpc-protos",
     "postinstall": "patch-package && yarn install-protos"
   },
   "devDependencies": {
