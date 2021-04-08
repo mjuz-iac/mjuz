@@ -28,17 +28,58 @@ describe('resources', () => {
 		await resourcesService.stop();
 	});
 
+	const expectOutput = async (program: PulumiFn, expectedOutput: string) => {
+		const { outputs } = await stack.up({ program });
+		expect(JSON.stringify(outputs)).toBe(expectedOutput);
+	};
+
 	describe('remote connection', () => {
-		test('deploy', async () => {
-			const program: PulumiFn = async () => {
-				const r = new RemoteConnection('testRemote', {});
-				return { r };
+		test('deploy, replace, update, unchanged', async () => {
+			const remoteUpdatedCb = jest.fn();
+			resourcesService.remoteUpdated.subscribe(remoteUpdatedCb);
+			const remoteRefreshedCb = jest.fn();
+			resourcesService.remoteRefreshed.subscribe(remoteRefreshedCb);
+			const remoteDeletedCb = jest.fn();
+			resourcesService.remoteDeleted.subscribe(remoteDeletedCb);
+			const expectActions = (updated: number, refreshed: number, deleted: number) => {
+				expect(remoteUpdatedCb.mock.calls.length).toBe(updated);
+				expect(remoteRefreshedCb.mock.calls.length).toBe(refreshed);
+				expect(remoteDeletedCb.mock.calls.length).toBe(deleted);
 			};
 
-			const { outputs } = await stack.up({ program });
-			expect(JSON.stringify(outputs)).toBe(
-				'{"r":{"value":{"host":"127.0.0.1","id":"testRemote","port":19952,"remoteId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}'
-			);
+			// deploy
+			await expectOutput(async () => {
+				const r = new RemoteConnection('testRemote', {});
+				return { r };
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote","port":19952,"remoteId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			expectActions(1, 0, 0);
+
+			// replace
+			await expectOutput(async () => {
+				const r = new RemoteConnection('testRemote', { remoteId: 'testRemote2' });
+				return { r };
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":19952,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			expectActions(2, 1, 1);
+
+			// update
+			await expectOutput(async () => {
+				const r = new RemoteConnection('testRemote', {
+					remoteId: 'testRemote2',
+					port: 123,
+				});
+				return { r };
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			expectActions(3, 2, 1);
+
+			// no update
+			await expectOutput(async () => {
+				const r = new RemoteConnection('testRemote', {
+					remoteId: 'testRemote2',
+					port: 123,
+				});
+				return { r };
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			expectActions(3, 3, 1);
 		});
 	});
 
