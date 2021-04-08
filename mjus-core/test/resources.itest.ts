@@ -84,64 +84,58 @@ describe('resources', () => {
 	});
 
 	describe('offer', () => {
-		test('deploy void offers', async () => {
-			const program: PulumiFn = async () => {
-				const r = new RemoteConnection('testRemote', {});
-				const o1 = new Offer(r, 'testOffer', undefined);
-				const o2 = new Offer('directlyNamedTestOffer', {
-					beneficiary: r,
-					offerName: 'testOffer',
-					offer: undefined,
-				});
-				return { o1, o2 };
+		test('deploy, replace, update, unchanged', async () => {
+			const offerUpdatedCb = jest.fn();
+			resourcesService.offerUpdated.subscribe(offerUpdatedCb);
+			const offerRefreshedCb = jest.fn();
+			resourcesService.offerRefreshed.subscribe(offerRefreshedCb);
+			const offerDeletedCb = jest.fn().mockImplementation(async ([, cb]) => cb(null));
+			resourcesService.offerWithdrawn.subscribe(offerDeletedCb);
+			const expectActions = (updated: number, refreshed: number, deleted: number) => {
+				expect(offerUpdatedCb.mock.calls.length).toBe(updated);
+				expect(offerRefreshedCb.mock.calls.length).toBe(refreshed);
+				expect(offerDeletedCb.mock.calls.length).toBe(deleted);
 			};
-			// Confirm withdrawals
-			resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
 
-			const { outputs } = await stack.up({ program });
-			expect(JSON.stringify(outputs)).toBe(
-				'{"o1":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offerName":"testOffer","urn":"' +
-					'urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote:testOffer"},"secre' +
-					't":false},"o2":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offerName":"testOffer' +
-					'","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::directlyNamedTestOff' +
-					'er"},"secret":false}}'
-			);
-		});
-
-		test('deploy and update', async () => {
-			const program = <T>(offer: T): PulumiFn => async () => {
-				const r = new RemoteConnection('testRemote', {});
-				const o = new Offer('testOfferName', {
+			// deploy
+			await expectOutput(async () => {
+				const r = new RemoteConnection('1stRemote', {});
+				const o = new Offer('2ndRemote:testOffer', {
 					beneficiary: r,
 					offerName: 'testOffer',
-					offer,
+					offer: { a: 1 },
 				});
 				return { o };
-			};
-			// Confirm withdrawals
-			resourcesService.offerWithdrawn.subscribe((p) => p[1](null));
+			}, '{"o":{"value":{"beneficiaryId":"1stRemote","id":"1stRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			expectActions(1, 0, 0);
 
-			{
-				const { outputs } = await stack.up({
-					program: program({ myArray: [3.4, 'test'], isTrue: true }),
+			// replace
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const o = new Offer('2ndRemote:testOffer', {
+					beneficiary: r,
+					offerName: 'testOffer',
+					offer: { a: 1 },
 				});
-				expect(JSON.stringify(outputs)).toBe(
-					'{"o":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offer":{"isTrue":true,"myArray":[3.4,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
-				);
-			}
+				return { o };
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			expectActions(2, 1, 1);
 
-			{
-				const { outputs } = await stack.up({
-					program: program({
-						myArray: [1.2, 'test'],
-						isTrue: false,
-						newField: 5,
-					}),
-				});
-				expect(JSON.stringify(outputs)).toBe(
-					'{"o":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"],"newField":5},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
-				);
-			}
+			// no update with alternative constructor
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const o = new Offer(r, 'testOffer', { a: 1 });
+				return { o };
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			expectActions(2, 2, 1);
+
+			// update
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const o = new Offer(r, 'testOffer', { a: [true, 'b'] });
+				return { o };
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":[true,"b"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			expectActions(3, 3, 1);
 		});
 	});
 
