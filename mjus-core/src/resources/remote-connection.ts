@@ -1,40 +1,44 @@
 import { CustomResourceOptions, dynamic, ID, Output } from '@pulumi/pulumi';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
-import { updateRemote, deleteRemote } from '../resources-service';
-
-/**
- * Name and id of `RemoteConnection resources equal.
- */
+import { updateRemote, deleteRemote, refreshRemote, Remote } from '../resources-service';
+import { CheckResult } from '@pulumi/pulumi/dynamic';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 19952;
 
 export type RemoteConnectionProps = {
-	name: string;
+	remoteId: string;
 	host: string;
 	port: number;
-	error: string | null; // Workaround to indicate error in resource provider
 };
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isRemoteConnectionProps = (v: any): v is RemoteConnectionProps =>
+	typeof v === 'object' &&
+	v !== null &&
+	typeof v.remoteId === 'string' &&
+	typeof v.host === 'string' &&
+	typeof v.port === 'number';
+const toRemote = (props: RemoteConnectionProps): Remote => {
+	return {
+		id: props.remoteId,
+		host: props.host,
+		port: props.port,
+	};
+};
 export class RemoteConnectionProvider implements dynamic.ResourceProvider {
-	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
-	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
-	// input property.
+	async check(
+		oldProps: unknown | RemoteConnectionProps,
+		newProps: RemoteConnectionProps
+	): Promise<CheckResult & { inputs: RemoteConnectionProps }> {
+		if (isRemoteConnectionProps(oldProps)) await refreshRemote(toRemote(oldProps));
+		return { inputs: newProps };
+	}
 
 	async create(
 		props: RemoteConnectionProps
 	): Promise<dynamic.CreateResult & { outs: RemoteConnectionProps }> {
-		try {
-			await updateRemote({ id: props.name, host: props.host, port: props.port });
-
-			const outProps: RemoteConnectionProps = {
-				...props,
-				error: null,
-			};
-			return { id: props.name, outs: outProps };
-		} catch (e) {
-			return { id: props.name, outs: { ...props, error: e.message } };
-		}
+		await updateRemote(toRemote(props));
+		return { id: props.remoteId, outs: props };
 	}
 
 	async diff(
@@ -43,10 +47,11 @@ export class RemoteConnectionProvider implements dynamic.ResourceProvider {
 		newProps: RemoteConnectionProps
 	): Promise<dynamic.DiffResult> {
 		return {
-			changes: true, // always trigger update
-			replaces: [oldProps.name !== newProps.name ? 'name' : null].filter(
-				(v) => v !== null
-			) as string[],
+			changes:
+				['remoteId' as const, 'host' as const, 'port' as const].filter(
+					(field) => oldProps[field] !== newProps[field]
+				).length > 0,
+			replaces: oldProps.remoteId !== newProps.remoteId ? ['remoteId'] : [],
 			deleteBeforeReplace: true,
 		};
 	}
@@ -55,34 +60,34 @@ export class RemoteConnectionProvider implements dynamic.ResourceProvider {
 		id: ID,
 		oldProps: RemoteConnectionProps,
 		newProps: RemoteConnectionProps
-	): Promise<dynamic.UpdateResult> {
-		return this.create(newProps);
+	): Promise<dynamic.UpdateResult & { outs: RemoteConnectionProps }> {
+		await updateRemote(toRemote(newProps));
+		return { outs: newProps };
 	}
 
 	async delete(id: ID, props: RemoteConnectionProps): Promise<void> {
-		await deleteRemote({ id: props.name, host: props.host, port: props.port });
+		await deleteRemote(toRemote(props));
 	}
 }
 
 export type RemoteConnectionArgs = Partial<
-	WrappedInputs<Omit<RemoteConnectionProps, 'name' | 'error'>>
+	WrappedInputs<Omit<RemoteConnectionProps, 'remoteId'>> & { remoteId: string }
 >;
-type RemoteConnectionOutputs = Readonly<WrappedOutputs<Omit<RemoteConnectionProps, 'name'>>>;
+export type RemoteConnectionOutputs = Readonly<
+	WrappedOutputs<Omit<RemoteConnectionProps, 'remoteId'>> & { remoteId: string }
+>;
 export class RemoteConnection extends dynamic.Resource implements RemoteConnectionOutputs {
 	constructor(name: string, args: RemoteConnectionArgs, opts?: CustomResourceOptions) {
 		const props: WrappedInputs<RemoteConnectionProps> = {
-			...args,
+			remoteId: args.remoteId || name,
 			host: args.host || DEFAULT_HOST,
 			port: args.port || DEFAULT_PORT,
-			name: name,
-			error: null,
 		};
 		super(new RemoteConnectionProvider(), name, props, opts);
-		this.name = name;
+		this.remoteId = args.remoteId || name;
 	}
 
-	public readonly name: string;
+	public readonly remoteId: string;
 	public readonly host!: Output<string>;
 	public readonly port!: Output<number>;
-	public readonly error!: Output<null | string>;
 }

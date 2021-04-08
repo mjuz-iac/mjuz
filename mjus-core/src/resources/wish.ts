@@ -144,7 +144,7 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 				? [nameOrTarget, argsOrOfferName]
 				: nameOrTarget !== 'string' && typeof argsOrOfferName === 'string'
 				? [
-						`${(<RemoteConnection>nameOrTarget).name}:${argsOrOfferName}`,
+						`${(<RemoteConnection>nameOrTarget).remoteId}:${argsOrOfferName}`,
 						{
 							offerName: argsOrOfferName,
 							target: <Input<RemoteConnection>>nameOrTarget,

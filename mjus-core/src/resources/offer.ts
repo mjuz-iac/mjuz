@@ -121,7 +121,7 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 			typeof nameOrBeneficiary === 'string' && typeof argsOrOfferName !== 'string'
 				? [nameOrBeneficiary, argsOrOfferName, <CustomResourceOptions>optsOrOffer]
 				: [
-						`${(<RemoteConnection>nameOrBeneficiary).name}:${argsOrOfferName}`,
+						`${(<RemoteConnection>nameOrBeneficiary).remoteId}:${argsOrOfferName}`,
 						{
 							beneficiary: nameOrBeneficiary as Input<RemoteConnection>,
 							offerName: argsOrOfferName as string,

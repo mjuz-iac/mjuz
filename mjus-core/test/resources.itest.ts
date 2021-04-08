@@ -37,7 +37,7 @@ describe('resources', () => {
 
 			const { outputs } = await stack.up({ program });
 			expect(JSON.stringify(outputs)).toBe(
-				'{"r":{"value":{"error":null,"host":"127.0.0.1","id":"testRemote","name":"testRemote","port":19952,"urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}'
+				'{"r":{"value":{"host":"127.0.0.1","id":"testRemote","port":19952,"remoteId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}'
 			);
 		});
 	});
