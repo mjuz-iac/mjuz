@@ -1,46 +1,39 @@
-import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
-import { Value } from 'google-protobuf/google/protobuf/struct_pb';
-import * as rpc from '@mjus/grpc-protos';
-import { deleteOffer, refreshOffer, updateOffer } from '../resources-service';
+import { CustomResourceOptions, dynamic, ID, Input, Inputs, Output } from '@pulumi/pulumi';
+import { deleteOffer, Offer as RsOffer, refreshOffer, updateOffer } from '../resources-service';
 import { RemoteConnection } from './remote-connection';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { isDeepStrictEqual } from 'util';
+import { CheckResult } from '@pulumi/pulumi/dynamic';
 
 export type OfferProps<O> = {
-	beneficiary: RemoteConnection;
+	beneficiaryId: string;
 	offerName: string;
 	offer: O;
-	error: string | null; // Workaround to indicate error in resource provider
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isOfferProps = <O>(v: any): v is OfferProps<O> =>
+	typeof v === 'object' &&
+	v !== null &&
+	typeof v.beneficiaryId === 'string' &&
+	typeof v.offerName === 'string' &&
+	'offer' in v;
+const toRsOffer = <O>(props: OfferProps<O>): RsOffer<O> => {
+	return {
+		beneficiaryId: props.beneficiaryId,
+		name: props.offerName,
+		offer: props.offer,
+	};
+};
 export class OfferProvider<O> implements dynamic.ResourceProvider {
-	private static offerToValue = <O>(offer: O): Value =>
-		Value.fromJavaScript(offer === undefined ? null : offer);
+	async check(oldProps: unknown | OfferProps<O>, newProps: OfferProps<O>): Promise<CheckResult> {
+		if (isOfferProps(oldProps)) await refreshOffer(toRsOffer(oldProps));
+		return { inputs: newProps };
+	}
 
-	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
-	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
-	// input property.
-	async create(
-		inputs: OfferProps<O> // Due to serialization all `Resource` values reduced to their id
-	): Promise<dynamic.CreateResult & { outs: OfferProps<O> }> {
-		try {
-			const offer = new rpc.Offer()
-				.setName(inputs.offerName)
-				.setBeneficiaryid(`${inputs.beneficiary}`)
-				.setOffer(OfferProvider.offerToValue(inputs.offer));
-			await updateOffer(offer);
-
-			const outProps: OfferProps<O> = {
-				...inputs,
-				error: null,
-			};
-			return { id: `${inputs.beneficiary}:${inputs.offerName}`, outs: outProps };
-		} catch (e) {
-			return {
-				id: `${inputs.beneficiary}:${inputs.offerName}`,
-				outs: { ...inputs, error: e.message },
-			};
-		}
+	async create(props: OfferProps<O>): Promise<dynamic.CreateResult & { outs: OfferProps<O> }> {
+		await updateOffer(toRsOffer(props));
+		return { id: `${props.beneficiaryId}:${props.offerName}`, outs: props };
 	}
 
 	async diff(
@@ -48,20 +41,13 @@ export class OfferProvider<O> implements dynamic.ResourceProvider {
 		oldProps: OfferProps<O>,
 		newProps: OfferProps<O>
 	): Promise<dynamic.DiffResult> {
-		const offer = new rpc.Offer()
-			.setName(oldProps.offerName)
-			.setBeneficiaryid(`${oldProps.beneficiary}`)
-			.setOffer(OfferProvider.offerToValue(oldProps.offer));
-		await refreshOffer(offer);
-		const replaces = [
-			...(oldProps.beneficiary !== newProps.beneficiary ? ['beneficiary'] : []),
-			...(oldProps.offerName !== newProps.offerName ? ['offerName'] : []),
-		];
+		const replaces = ['beneficiaryId' as const, 'offerName' as const].filter(
+			(field) => oldProps[field] !== newProps[field]
+		);
 		const offerChanged = !isDeepStrictEqual(oldProps.offer, newProps.offer);
-
 		return {
 			changes: replaces.length > 0 || offerChanged,
-			replaces,
+			replaces: replaces,
 			deleteBeforeReplace: true,
 		};
 	}
@@ -70,35 +56,22 @@ export class OfferProvider<O> implements dynamic.ResourceProvider {
 		id: ID,
 		oldProps: OfferProps<O>,
 		newProps: OfferProps<O>
-	): Promise<dynamic.UpdateResult> {
-		try {
-			const offer = new rpc.Offer()
-				.setName(newProps.offerName)
-				.setBeneficiaryid(`${newProps.beneficiary}`)
-				.setOffer(OfferProvider.offerToValue(newProps.offer));
-			await updateOffer(offer);
-
-			const outProps: OfferProps<O> = {
-				...newProps,
-				error: null,
-			};
-			return { outs: outProps };
-		} catch (e) {
-			return { outs: { ...oldProps, error: e.message } };
-		}
+	): Promise<dynamic.UpdateResult & { outs: OfferProps<O> }> {
+		await updateOffer(toRsOffer(newProps));
+		return { outs: newProps };
 	}
 
-	async delete(id: ID, inputs: OfferProps<O>): Promise<void> {
-		const offer = new rpc.Offer()
-			.setName(inputs.offerName)
-			.setBeneficiaryid(`${inputs.beneficiary}`)
-			.setOffer(OfferProvider.offerToValue(inputs.offer));
-		await deleteOffer(offer);
+	async delete(id: ID, props: OfferProps<O>): Promise<void> {
+		await deleteOffer({ beneficiaryId: props.beneficiaryId, name: props.offerName });
 	}
 }
 
-type OfferArgs<O> = WrappedInputs<Omit<OfferProps<O>, 'error'>>;
-type OfferOutputs<O> = Readonly<WrappedOutputs<OfferProps<O>>>;
+export type OfferArgs<O> = WrappedInputs<
+	Omit<OfferProps<O>, 'beneficiaryId'> & { beneficiary: RemoteConnection }
+>;
+export type OfferOutputs<O> = Readonly<
+	WrappedOutputs<Omit<OfferProps<O>, 'beneficiaryId'> & { beneficiary: RemoteConnection }>
+>;
 export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 	constructor(
 		beneficiary: Input<RemoteConnection>,
@@ -113,11 +86,7 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 		optsOrOffer: CustomResourceOptions | Input<O>,
 		opts?: CustomResourceOptions
 	) {
-		const [name, args, opt]: [
-			string,
-			OfferArgs<O> | undefined,
-			CustomResourceOptions | undefined
-		] =
+		const [name, props, opt]: [string, Inputs, CustomResourceOptions | undefined] =
 			typeof nameOrBeneficiary === 'string' && typeof argsOrOfferName !== 'string'
 				? [nameOrBeneficiary, argsOrOfferName, <CustomResourceOptions>optsOrOffer]
 				: [
@@ -126,18 +95,15 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 							beneficiary: nameOrBeneficiary as Input<RemoteConnection>,
 							offerName: argsOrOfferName as string,
 							offer: <Input<O>>optsOrOffer,
-						},
+						} as OfferArgs<O>,
 						opts,
 				  ];
-		const props: WrappedInputs<OfferProps<O>> = {
-			...args,
-			error: null,
-		};
+		props.beneficiaryId = props.beneficiary;
+		delete props.beneficiary;
 		super(new OfferProvider<O>(), name, props, opt);
 	}
 
 	public readonly beneficiary!: Output<RemoteConnection>;
 	public readonly offerName!: Output<string>;
 	public readonly offer!: Output<O>;
-	public readonly error!: Output<string | null>;
 }

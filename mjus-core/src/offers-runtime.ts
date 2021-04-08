@@ -106,7 +106,7 @@ const accumOutboundOffers = (
 		(event, offers) => {
 			const [change, offer] = event;
 			const update = { ...offers };
-			const offerId = `${offer.beneficiaryid}:${offer.name}`;
+			const offerId = `${offer.beneficiaryId}:${offer.name}`;
 
 			if (change === 'upsert') update[offerId] = offer;
 			else if (!(offerId in update)) logger.warn(`Withdrawing unknown offer ${offerId}`);
@@ -214,7 +214,7 @@ const directOfferForward = (
 	deploymentName: string
 ): Stream<IO<rpc.Offer>> =>
 	snapshotWith<Offer<unknown>, Remotes, [rpc.DeploymentClient, Offer<unknown>]>(
-		(offer, remotes) => [remotes[offer.beneficiaryid], offer],
+		(offer, remotes) => [remotes[offer.beneficiaryId], offer],
 		remotes,
 		offerUpdated
 	)
@@ -234,7 +234,7 @@ const directOfferForward = (
 			sendOfferOp.map((sentOffer) =>
 				logger.debug(
 					sentOffer,
-					`Directly forwarded offer ${sentOffer.name} to ${sentOffer.beneficiaryid}`
+					`Directly forwarded offer ${sentOffer.name} to ${sentOffer.beneficiaryId}`
 				)
 			)
 		)
@@ -285,10 +285,10 @@ const offerWithdrawalSend = (
 		snapshotWith<[Offer<unknown>, (error: Error | null) => void], Remotes, Future<IO<void>>>(
 			(withdrawal, remotes) => {
 				const [offer, cb] = withdrawal;
-				if (offer.beneficiaryid in remotes)
+				if (offer.beneficiaryId in remotes)
 					return Future.of(
 						call(() => {
-							remotes[offer.beneficiaryid].releaseOffer(
+							remotes[offer.beneficiaryId].releaseOffer(
 								toRpcDeploymentOffer(offer, deploymentName),
 								// eslint-disable-next-line @typescript-eslint/no-empty-function
 								cb
@@ -297,7 +297,7 @@ const offerWithdrawalSend = (
 					);
 				/*  eslint-disable prettier/prettier */ else
 				return runNow(sample(nextOccurrenceFrom(
-					connects.filter((remote) => remote[0] === offer.beneficiaryid).map((remote) => call(() => {
+					connects.filter((remote) => remote[0] === offer.beneficiaryId).map((remote) => call(() => {
 						remote[1].releaseOffer(
 							toRpcDeploymentOffer(offer, deploymentName),
 							// eslint-disable-next-line @typescript-eslint/no-empty-function

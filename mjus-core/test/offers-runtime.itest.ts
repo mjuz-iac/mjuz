@@ -86,12 +86,12 @@ describe('offers runtime', () => {
 
 		resourcesService.remoteUpdated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		resourcesService.offerUpdated.push({
-			beneficiaryid: 'no-remote',
+			beneficiaryId: 'no-remote',
 			name: 'test',
 			offer: { a: ['b', 'c'] },
 		});
 		resourcesService.offerUpdated.push({
-			beneficiaryid: 'remote',
+			beneficiaryId: 'remote',
 			name: 'test',
 			offer: { a: ['b', 'c'] },
 		});
@@ -109,7 +109,7 @@ describe('offers runtime', () => {
 		await remoteDeploymentService.stop();
 		resourcesService.remoteUpdated.push({ id: 'remote', host: '127.0.0.1', port: 19953 });
 		resourcesService.offerUpdated.push({
-			beneficiaryid: 'remote',
+			beneficiaryId: 'remote',
 			name: 'test',
 			offer: { a: ['b', 'c'] },
 		});

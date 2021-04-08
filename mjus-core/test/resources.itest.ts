@@ -100,9 +100,9 @@ describe('resources', () => {
 
 			const { outputs } = await stack.up({ program });
 			expect(JSON.stringify(outputs)).toBe(
-				'{"o1":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offerName":"testOffer","urn":"' +
+				'{"o1":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offerName":"testOffer","urn":"' +
 					'urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote:testOffer"},"secre' +
-					't":false},"o2":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offerName":"testOffer' +
+					't":false},"o2":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offerName":"testOffer' +
 					'","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::directlyNamedTestOff' +
 					'er"},"secret":false}}'
 			);
@@ -126,7 +126,7 @@ describe('resources', () => {
 					program: program({ myArray: [3.4, 'test'], isTrue: true }),
 				});
 				expect(JSON.stringify(outputs)).toBe(
-					'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":true,"myArray":[3.4,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
+					'{"o":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offer":{"isTrue":true,"myArray":[3.4,"test"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
 				);
 			}
 
@@ -139,7 +139,7 @@ describe('resources', () => {
 					}),
 				});
 				expect(JSON.stringify(outputs)).toBe(
-					'{"o":{"value":{"beneficiary":"testRemote","error":null,"id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"],"newField":5},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
+					'{"o":{"value":{"beneficiaryId":"testRemote","id":"testRemote:testOffer","offer":{"isTrue":false,"myArray":[1.2,"test"],"newField":5},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testOfferName"},"secret":false}}'
 				);
 			}
 		});

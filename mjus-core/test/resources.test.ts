@@ -1,16 +1,10 @@
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
-import { Message } from 'google-protobuf';
-import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
-import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
-import * as rpc from '@mjus/grpc-protos';
 import { ID } from '@pulumi/pulumi';
-import { mock } from 'ts-mockito';
 import { isDeepStrictEqual } from 'util';
 import {
 	OfferProps,
 	OfferProvider,
-	RemoteConnection,
 	RemoteConnectionProps,
 	RemoteConnectionProvider,
 } from '../src/resources';
@@ -18,136 +12,155 @@ import * as resourcesService from '../src/resources-service';
 
 describe('resources', () => {
 	describe('offer', () => {
-		const propsArb: Arbitrary<OfferProps<unknown>> = fc
-			.tuple(
-				fc.oneof(fc.clonedConstant(mock<RemoteConnection>())),
-				fc.string(),
-				fc.option(fc.jsonObject(), { nil: undefined }),
-				fc.option(fc.string())
-			)
-			.map(([beneficiary, offerName, offer, error]) => {
-				return { beneficiary, offerName, offer, error };
+		const propsArb: Arbitrary<OfferProps<unknown>> = fc.record({
+			beneficiaryId: fc.string(),
+			offerName: fc.string(),
+			offer: fc.jsonObject(),
+		});
+
+		describe('check', () => {
+			test('deployed', () => {
+				const pred = async (
+					oldProps: OfferProps<unknown>,
+					newProps: OfferProps<unknown>
+				) => {
+					const refreshOfferSpy = jest
+						.spyOn(resourcesService, 'refreshOffer')
+						.mockImplementation(async (offer) =>
+							expect(offer).toStrictEqual({
+								beneficiaryId: oldProps.beneficiaryId.toString(),
+								name: oldProps.offerName,
+								offer: oldProps.offer,
+							} as resourcesService.Offer<unknown>)
+						);
+					const result = await new OfferProvider().check(oldProps, newProps);
+					expect(result).toStrictEqual({ inputs: newProps });
+					expect(refreshOfferSpy).toHaveBeenCalledTimes(1);
+					refreshOfferSpy.mockRestore();
+				};
+				return fc.assert(fc.asyncProperty(propsArb, propsArb, pred));
 			});
 
-		const mockUpdateOffer = (props: OfferProps<unknown>, fails: boolean) =>
-			jest.spyOn(resourcesService, 'updateOffer').mockImplementation(async (offer) => {
-				const refOffer = new rpc.Offer()
-					.setName(props.offerName)
-					.setBeneficiaryid(props.beneficiary.toString())
-					.setOffer(
-						Value.fromJavaScript(
-							props.offer === undefined ? null : (props.offer as JavaScriptValue)
-						)
-					);
-				expect(Message.equals(refOffer, offer)).toBe(true);
-
-				if (fails) throw new Error('Test error');
-				return new Empty();
+			test('not deployed', () => {
+				const pred = async (oldProps: unknown, newProps: OfferProps<unknown>) => {
+					const refreshOfferSpy = jest.spyOn(resourcesService, 'refreshOffer');
+					const result = await new OfferProvider().check(oldProps, newProps);
+					expect(result).toStrictEqual({ inputs: newProps });
+					expect(refreshOfferSpy).toHaveBeenCalledTimes(0);
+				};
+				return fc.assert(fc.asyncProperty(fc.anything(), propsArb, pred));
 			});
+		});
+
+		const mockUpdateOffer = (props: OfferProps<unknown>) =>
+			jest.spyOn(resourcesService, 'updateOffer').mockImplementation(async (offer) =>
+				expect(offer).toStrictEqual({
+					beneficiaryId: props.beneficiaryId.toString(),
+					name: props.offerName,
+					offer: props.offer,
+				} as resourcesService.Offer<unknown>)
+			);
 
 		test('create', () => {
-			const pred = async (props: OfferProps<unknown>, fails: boolean) => {
-				const updateOfferSpy = mockUpdateOffer(props, fails);
-				const result = await new OfferProvider().create(props);
-
-				expect(result).toEqual({
-					id: `${props.beneficiary}:${props.offerName}`,
-					outs: { ...props, error: fails ? 'Test error' : null },
+			const pred = async (props: OfferProps<unknown>) => {
+				const updateOfferSpy = mockUpdateOffer(props);
+				expect(await new OfferProvider().create(props)).toEqual({
+					id: props.beneficiaryId.toString() + ':' + props.offerName,
+					outs: props,
 				});
 				expect(updateOfferSpy).toHaveBeenCalledTimes(1);
 				updateOfferSpy.mockRestore();
 			};
-
-			return fc.assert(fc.asyncProperty(propsArb, fc.boolean(), pred));
+			return fc.assert(fc.asyncProperty(propsArb, pred));
 		});
 
 		test('update', () => {
 			const pred = async (
 				id: ID,
 				oldProps: OfferProps<unknown>,
-				newProps: OfferProps<unknown>,
-				fails: boolean
+				newProps: OfferProps<unknown>
 			) => {
-				const updateOfferSpy = mockUpdateOffer(newProps, fails);
-				const result = await new OfferProvider().update(id, oldProps, newProps);
-
-				expect(result).toEqual({
-					outs: fails
-						? { ...oldProps, error: 'Test error' }
-						: { ...newProps, error: null },
+				const updateOfferSpy = mockUpdateOffer(newProps);
+				expect(await new OfferProvider().update(id, oldProps, newProps)).toEqual({
+					outs: newProps,
 				});
 				expect(updateOfferSpy).toHaveBeenCalledTimes(1);
 				updateOfferSpy.mockRestore();
 			};
-
-			return fc.assert(fc.asyncProperty(fc.string(), propsArb, propsArb, fc.boolean(), pred));
+			return fc.assert(fc.asyncProperty(fc.string(), propsArb, propsArb, pred));
 		});
 
-		const mockRefreshOffer = (props: OfferProps<unknown>) =>
-			jest.spyOn(resourcesService, 'refreshOffer').mockImplementation(async (offer) => {
-				const refOffer = new rpc.Offer()
-					.setName(props.offerName)
-					.setBeneficiaryid(props.beneficiary.toString())
-					.setOffer(
-						Value.fromJavaScript(
-							props.offer === undefined ? null : (props.offer as JavaScriptValue)
-						)
-					);
-				expect(Message.equals(refOffer, offer)).toBe(true);
-				return new Empty();
+		describe('diff', () => {
+			test('unchanged', () => {
+				const pred = async (id: ID, props: OfferProps<unknown>) => {
+					const result = await new OfferProvider().diff(id, props, props);
+					expect(result).toStrictEqual({
+						changes: false,
+						replaces: [],
+						deleteBeforeReplace: true,
+					});
+				};
+				return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
 			});
 
-		test('diff', () => {
-			const pred = async (
-				id: ID,
-				oldProps: OfferProps<unknown>,
-				newProps: OfferProps<unknown>,
-				sameBeneficiary: boolean
-			) => {
-				const refreshOfferSpy = mockRefreshOffer(oldProps);
-				if (sameBeneficiary) newProps.beneficiary = oldProps.beneficiary;
-				const result = await new OfferProvider().diff(id, oldProps, newProps);
-
-				expect(result).toEqual({
-					changes:
-						!isDeepStrictEqual(oldProps, { ...newProps, error: oldProps.error }) ||
-						oldProps.beneficiary !== newProps.beneficiary,
-					replaces: [
-						...(oldProps.beneficiary !== newProps.beneficiary ? ['beneficiary'] : []),
-						...(oldProps.offerName !== newProps.offerName ? ['offerName'] : []),
-					],
-					deleteBeforeReplace: true,
-				});
-				expect(refreshOfferSpy).toHaveBeenCalledTimes(1);
-				refreshOfferSpy.mockRestore();
-			};
-
-			return fc.assert(fc.asyncProperty(fc.string(), propsArb, propsArb, fc.boolean(), pred));
+			type BiOffer = [OfferProps<unknown>, OfferProps<unknown>];
+			test('update', () => {
+				const pred = async (id: ID, [oldProps, newProps]: BiOffer) => {
+					const result = await new OfferProvider().diff(id, oldProps, newProps);
+					expect(result).toStrictEqual({
+						changes: true,
+						replaces: [],
+						deleteBeforeReplace: true,
+					});
+				};
+				const propsArbs = fc
+					.tuple(propsArb, fc.jsonObject())
+					.filter(([props, offer]) => !isDeepStrictEqual(props.offer, offer))
+					.map<BiOffer>(([props, offer]) => [props, { ...props, offer }]);
+				return fc.assert(fc.asyncProperty(fc.string(), propsArbs, pred));
+			});
+			test('replace', () => {
+				const pred = async (id: ID, [oldProps, newProps]: BiOffer) => {
+					const results = await new OfferProvider().diff(id, oldProps, newProps);
+					expect(results).toStrictEqual({
+						changes: true,
+						replaces:
+							oldProps.beneficiaryId !== newProps.beneficiaryId
+								? oldProps.offerName !== newProps.offerName
+									? ['beneficiaryId', 'offerName']
+									: ['beneficiaryId']
+								: ['offerName'],
+						deleteBeforeReplace: true,
+					});
+				};
+				const propsArbs = fc
+					.tuple(propsArb, fc.string(), fc.string())
+					.filter(
+						([props, beneficiaryId, offerName]) =>
+							props.beneficiaryId !== beneficiaryId || props.offerName !== offerName
+					)
+					.map<BiOffer>(([props, beneficiaryId, offerName]) => [
+						props,
+						{ ...props, beneficiaryId, offerName },
+					]);
+				return fc.assert(fc.asyncProperty(fc.string(), propsArbs, pred));
+			});
 		});
-
-		const mockDeleteOffer = (props: OfferProps<unknown>) =>
-			jest.spyOn(resourcesService, 'deleteOffer').mockImplementation(async (offer) => {
-				const refOffer = new rpc.Offer()
-					.setName(props.offerName)
-					.setBeneficiaryid(`${props.beneficiary}`)
-					.setOffer(
-						Value.fromJavaScript(
-							props.offer === undefined ? null : (props.offer as JavaScriptValue)
-						)
-					);
-				expect(Message.equals(refOffer, offer)).toBe(true);
-				return new Empty();
-			});
 
 		test('delete', () => {
 			const pred = async (id: ID, props: OfferProps<unknown>) => {
-				const deleteOfferSpy = mockDeleteOffer(props);
+				const deleteOfferSpy = jest
+					.spyOn(resourcesService, 'deleteOffer')
+					.mockImplementation(async (offer) =>
+						expect(offer).toStrictEqual({
+							beneficiaryId: props.beneficiaryId,
+							name: props.offerName,
+						} as resourcesService.Offer<unknown>)
+					);
 				await new OfferProvider().delete(id, props);
-
 				expect(deleteOfferSpy).toHaveBeenCalledTimes(1);
 				deleteOfferSpy.mockRestore();
 			};
-
 			return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
 		});
 	});

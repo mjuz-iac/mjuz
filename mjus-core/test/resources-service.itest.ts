@@ -5,12 +5,14 @@ import {
 	deleteOffer,
 	deleteRemote,
 	getWish,
+	Offer,
 	refreshRemote,
 	Remote,
 	ResourcesService,
 	startResourcesService,
 	updateOffer,
 	wishDeleted,
+	refreshOffer,
 } from '../src';
 import { Stream } from '@funkia/hareactive';
 import * as fc from 'fast-check';
@@ -32,11 +34,22 @@ describe('resources service', () => {
 	const firstEvent = <R>(stream: Stream<R>) =>
 		new Promise((resolve) => stream.subscribe((firstEvent) => resolve(firstEvent)));
 
-	const testRpc = async <T>(fn: (v: T) => void, arb: Arbitrary<T>, stream: Stream<T>) => {
+	const testRpc = async <T>(
+		sendFn: (v: T) => void,
+		arb: Arbitrary<T>,
+		stream: Stream<T | [T, (err: Error | null) => void]>
+	) => {
 		const pred = async (val: T) => {
-			const received = firstEvent(stream);
-			await fn(val);
-			expect(await received).toEqual(val);
+			const asyncReceive = firstEvent(stream);
+			const asyncResponse = sendFn(val);
+			const received = await asyncReceive;
+			let receivedVal, receivedCb;
+			if (Array.isArray(received)) {
+				[receivedVal, receivedCb] = received;
+				receivedCb(null);
+			} else receivedVal = received;
+			expect(receivedVal).toEqual(val);
+			await asyncResponse;
 		};
 		await fc.assert(fc.asyncProperty(arb, pred));
 	};
@@ -51,29 +64,14 @@ describe('resources service', () => {
 		testRpc(refreshRemote, remoteArb, resourcesService.remoteRefreshed));
 	test('delete remote', () => testRpc(deleteRemote, remoteArb, resourcesService.remoteDeleted));
 
-	test('update offer', async () => {
-		const offer = new rpc.Offer();
-		const received = new Promise((resolve) =>
-			resourcesService.offerUpdated.subscribe((receivedOffer) =>
-				resolve(expect(receivedOffer).toEqual(offer.toObject()))
-			)
-		);
-		await expect(updateOffer(offer)).resolves.toEqual(new Empty());
-		await received;
+	const offerArb: fc.Arbitrary<Offer<unknown>> = fc.record({
+		beneficiaryId: fc.string(),
+		name: fc.string(),
+		offer: fc.option(fc.jsonObject(), { nil: undefined }),
 	});
-
-	test('delete offer', async () => {
-		const offer = new rpc.Offer();
-		const received = new Promise((resolve) =>
-			resourcesService.offerWithdrawn.subscribe((t) => {
-				const [receivedOffer, cb] = t;
-				resolve(expect(receivedOffer).toEqual(offer.toObject()));
-				cb(null);
-			})
-		);
-		await expect(deleteOffer(offer)).resolves.toEqual(new Empty());
-		await received;
-	});
+	test('update offer', () => testRpc(updateOffer, offerArb, resourcesService.offerUpdated));
+	test('refresh offer', () => testRpc(refreshOffer, offerArb, resourcesService.offerRefreshed));
+	test('delete offer', () => testRpc(deleteOffer, offerArb, resourcesService.offerWithdrawn));
 
 	test('get wish', async () => {
 		const wish = new rpc.Wish();

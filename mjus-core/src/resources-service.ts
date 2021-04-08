@@ -14,6 +14,24 @@ export type Remote = rpc.Remote.AsObject;
 export const fromRpcRemote = (remote: rpc.Remote): Remote => remote.toObject();
 export const toRpcRemote = (remote: Remote): rpc.Remote =>
 	new rpc.Remote().setId(remote.id).setHost(remote.host).setPort(remote.port);
+
+export type Offer<O> = Omit<rpc.Offer.AsObject, 'beneficiaryid' | 'offer'> & {
+	beneficiaryId: string;
+	offer?: O;
+};
+export const fromRpcOffer = <O>(offer: rpc.Offer): Offer<O> => {
+	return {
+		name: offer.getName(),
+		beneficiaryId: offer.getBeneficiaryid(),
+		offer: offer.getOffer()?.toJavaScript() as O,
+	};
+};
+export const toRpcOffer = <O>(offer: Offer<O>): rpc.Offer => {
+	const o = new rpc.Offer().setName(offer.name).setBeneficiaryid(offer.beneficiaryId);
+	if (offer.offer !== undefined) o.setOffer(Value.fromJavaScript(offer.offer));
+	return o;
+};
+
 export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish => {
 	const w = new rpc.Wish()
 		.setTargetid(wish.targetid)
@@ -21,13 +39,6 @@ export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish => {
 		.setIswithdrawn(wish.iswithdrawn);
 	if (wish.offer) w.setOffer(Value.fromJavaScript(wish.offer));
 	return w;
-};
-export const toOffer = <O>(offer: rpc.Offer): Offer<O> => {
-	return {
-		beneficiaryid: offer.getBeneficiaryid(),
-		name: offer.getName(),
-		offer: offer.getOffer()?.toJavaScript() as O,
-	};
 };
 export const toWish = <O>(wish: rpc.Wish): Wish<O> => {
 	return {
@@ -62,12 +73,12 @@ export const refreshRemote = (remote: Remote): Promise<void> =>
 	resourcesClientRpc((client, cb) => client.refreshRemote(toRpcRemote(remote), (err) => cb(err)));
 export const deleteRemote = (remote: Remote): Promise<void> =>
 	resourcesClientRpc((client, cb) => client.deleteRemote(toRpcRemote(remote), (err) => cb(err)));
-export const refreshOffer = (offer: rpc.Offer): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.refreshOffer(offer, cb));
-export const updateOffer = (offer: rpc.Offer): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.updateOffer(offer, cb));
-export const deleteOffer = (offer: rpc.Offer): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.deleteOffer(offer, cb));
+export const updateOffer = <O>(offer: Offer<O>): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.updateOffer(toRpcOffer(offer), (err) => cb(err)));
+export const refreshOffer = <O>(offer: Offer<O>): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.refreshOffer(toRpcOffer(offer), (err) => cb(err)));
+export const deleteOffer = <O>(offer: Offer<O>): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.deleteOffer(toRpcOffer(offer), (err) => cb(err)));
 export const getWish = (wish: rpc.Wish): Promise<rpc.Wish> =>
 	resourcesClientRpc((client, cb) => client.getWish(wish, cb));
 export const wishDeleted = (wish: rpc.Wish): Promise<Empty> =>
@@ -107,24 +118,24 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 			cb(null, new Empty());
 		}
 
-		refreshOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
-			const offer = call.request as rpc.Offer;
-			logger.info(offer, 'Offer refreshed');
-			offerRefreshed.push(toOffer(offer));
-			cb(null, new Empty());
-		}
-
 		updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
 			logger.info(offer, 'Offer updated');
-			offerUpdated.push(toOffer(offer));
+			offerUpdated.push(fromRpcOffer(offer));
+			cb(null, new Empty());
+		}
+
+		refreshOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
+			const offer = call.request as rpc.Offer;
+			logger.info(offer, 'Offer refreshed');
+			offerRefreshed.push(fromRpcOffer(offer));
 			cb(null, new Empty());
 		}
 
 		deleteOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
 			logger.info(offer, 'Withdrawing offer');
-			offerWithdrawn.push([toOffer(offer), (error) => cb(error, new Empty())]);
+			offerWithdrawn.push([fromRpcOffer(offer), (error) => cb(error, new Empty())]);
 		}
 
 		getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
@@ -144,8 +155,8 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	const remoteUpdated = sinkStream<Remote>();
 	const remoteRefreshed = sinkStream<Remote>();
 	const remoteDeleted = sinkStream<Remote>();
-	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerUpdated = sinkStream<Offer<unknown>>();
+	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
 	const wishPolled = sinkStream<
 		[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
@@ -157,22 +168,21 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 		remoteUpdated,
 		remoteRefreshed,
 		remoteDeleted,
-		offerRefreshed,
 		offerUpdated,
+		offerRefreshed,
 		offerWithdrawn,
 		wishPolled,
 		wishDeleted,
 	};
 };
 
-export type Offer<O> = Omit<rpc.Offer.AsObject, 'offer'> & { offer?: O };
 export type Wish<O> = Omit<rpc.Wish.AsObject, 'offer'> & { offer?: O };
 export type ResourcesService = {
 	remoteUpdated: Stream<Remote>;
 	remoteRefreshed: Stream<Remote>;
 	remoteDeleted: Stream<Remote>;
-	offerRefreshed: Stream<Offer<unknown>>;
 	offerUpdated: Stream<Offer<unknown>>;
+	offerRefreshed: Stream<Offer<unknown>>;
 	offerWithdrawn: Stream<[Offer<unknown>, (error: Error | null) => void]>;
 	wishPolled: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>;
 	wishDeleted: Stream<Wish<unknown>>;
