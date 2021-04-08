@@ -1,10 +1,8 @@
 import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
-import * as rpc from '@mjus/grpc-protos';
+import { isDeepStrictEqual } from 'util';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { RemoteConnection } from './remote-connection';
-import { getWish, wishDeleted } from '../resources-service';
-import { isDeepStrictEqual } from 'util';
-import { Value } from 'google-protobuf/google/protobuf/struct_pb';
+import { getWish, Wish as RsWish, wishDeleted } from '../resources-service';
 
 type WishProps<O> = {
 	offerName: string;
@@ -14,6 +12,12 @@ type WishProps<O> = {
 	error: string | null; // Workaround to indicate error in resource provider
 };
 
+const toRsWish = <O>(wish: WishProps<O>): RsWish<O> => {
+	return {
+		targetId: `${wish.target}`,
+		name: wish.offerName,
+	};
+};
 class WishProvider<O> implements dynamic.ResourceProvider {
 	// Problem: If this method fails Pulumi exits with promise leak errors, even though this actually should mean
 	// the deployment did not run through. For now: make sure this function won't reject. For debugging, we use an error
@@ -23,15 +27,12 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 		props: WishProps<O> // Due to serialization all `Resource` values reduced to their id
 	): Promise<dynamic.CreateResult & { outs: WishProps<O> }> {
 		try {
-			const wishRequest = new rpc.Wish()
-				.setName(props.offerName)
-				.setTargetid(`${props.target}`);
-			const wish = await getWish(wishRequest);
+			const remoteOffer = await getWish(toRsWish(props));
 
 			const outProps: WishProps<O> = {
 				...props,
-				isSatisfied: wish.hasOffer(),
-				offer: wish.hasOffer() ? (wish.getOffer()?.toJavaScript() as O | null) : null,
+				isSatisfied: remoteOffer.offer !== undefined,
+				offer: remoteOffer.offer !== undefined ? remoteOffer.offer : null,
 				error: null,
 			};
 			return {
@@ -65,21 +66,18 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 		oldProps: WishProps<O>,
 		newProps: WishProps<O>
 	): Promise<dynamic.DiffResult> {
-		const wishRequest = new rpc.Wish()
-			.setName(newProps.offerName)
-			.setTargetid(`${newProps.target}`);
-		const wish = await getWish(wishRequest);
+		const wish = await getWish(toRsWish(newProps));
 		const satisfactionChanged =
 			// Unsatisfied wish became satisfied
-			(!oldProps.isSatisfied && wish.hasOffer()) ||
+			(!oldProps.isSatisfied && wish.offer !== undefined) ||
 			// Satisfied wish was withdrawn
-			(oldProps.isSatisfied && wish.hasIswithdrawn() && wish.getIswithdrawn());
+			(oldProps.isSatisfied && wish.offer === undefined && wish.isWithdrawn);
 		const offerChanged =
 			satisfactionChanged ||
 			// Satisfied wish' value changed
 			(oldProps.isSatisfied &&
-				wish.hasOffer &&
-				!isDeepStrictEqual(oldProps.offer, wish.getOffer()?.toJavaScript()));
+				wish.offer !== undefined &&
+				!isDeepStrictEqual(oldProps.offer, wish.offer));
 
 		return {
 			changes: offerChanged,
@@ -97,17 +95,14 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 		newProps: WishProps<O>
 	): Promise<dynamic.UpdateResult> {
 		try {
-			const wishRequest = new rpc.Wish()
-				.setName(newProps.offerName)
-				.setTargetid(`${newProps.target}`);
-			const wish = await getWish(wishRequest);
+			const wish = await getWish(toRsWish(newProps));
 
-			if (!oldProps.isSatisfied || !wish.hasOffer)
+			if (!oldProps.isSatisfied || wish.offer === undefined)
 				throw new Error('Wish can only be updated if satisfied before and afterwards');
 
 			const outProps: WishProps<O> = {
 				...newProps,
-				offer: wish.getOffer()?.toJavaScript() as O | null,
+				offer: wish.offer as O,
 				error: null,
 			};
 			return { outs: outProps };
@@ -118,11 +113,7 @@ class WishProvider<O> implements dynamic.ResourceProvider {
 
 	async delete(id: ID, props: WishProps<O>): Promise<void> {
 		if (props.isSatisfied) {
-			const wish = new rpc.Wish()
-				.setName(props.offerName)
-				.setTargetid(`${props.target}`)
-				.setOffer(Value.fromJavaScript(null));
-			await wishDeleted(wish);
+			await wishDeleted(toRsWish(props));
 		}
 	}
 }

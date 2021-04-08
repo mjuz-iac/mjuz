@@ -1,5 +1,3 @@
-import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
-import * as rpc from '@mjus/grpc-protos';
 import {
 	updateRemote,
 	deleteOffer,
@@ -8,9 +6,11 @@ import {
 	Offer,
 	refreshRemote,
 	Remote,
+	RemoteOffer,
 	ResourcesService,
 	startResourcesService,
 	updateOffer,
+	Wish,
 	wishDeleted,
 	refreshOffer,
 } from '../src';
@@ -34,27 +34,32 @@ describe('resources service', () => {
 	const firstEvent = <R>(stream: Stream<R>) =>
 		new Promise((resolve) => stream.subscribe((firstEvent) => resolve(firstEvent)));
 
-	const testRpc = async <T>(
-		sendFn: (v: T) => void,
-		arb: Arbitrary<T>,
-		stream: Stream<T | [T, (err: Error | null) => void]>
+	const testRpc = async <T, R>(
+		requestFn: (v: T) => void,
+		requestArb: Arbitrary<T>,
+		stream: Stream<
+			T | [T, (err: Error | null) => void] | [T, (err: Error | null, res: R | null) => void]
+		>,
+		responseArb?: Arbitrary<R>
 	) => {
-		const pred = async (val: T) => {
+		const pred = async (request: T, response?: R) => {
 			const asyncReceive = firstEvent(stream);
-			const asyncResponse = sendFn(val);
+			const asyncResponse = requestFn(request);
 			const received = await asyncReceive;
 			let receivedVal, receivedCb;
 			if (Array.isArray(received)) {
 				[receivedVal, receivedCb] = received;
-				receivedCb(null);
+				receivedCb(null, response);
 			} else receivedVal = received;
-			expect(receivedVal).toEqual(val);
-			await asyncResponse;
+			expect(receivedVal).toEqual(request);
+			expect(await asyncResponse).toStrictEqual(response);
 		};
-		await fc.assert(fc.asyncProperty(arb, pred));
+		await fc.assert(
+			fc.asyncProperty(requestArb, responseArb ? responseArb : fc.constant(undefined), pred)
+		);
 	};
 
-	const remoteArb: fc.Arbitrary<Remote> = fc.record({
+	const remoteArb: Arbitrary<Remote> = fc.record({
 		id: fc.string(),
 		host: fc.string(),
 		port: fc.nat(),
@@ -64,7 +69,7 @@ describe('resources service', () => {
 		testRpc(refreshRemote, remoteArb, resourcesService.remoteRefreshed));
 	test('delete remote', () => testRpc(deleteRemote, remoteArb, resourcesService.remoteDeleted));
 
-	const offerArb: fc.Arbitrary<Offer<unknown>> = fc.record({
+	const offerArb: Arbitrary<Offer<unknown>> = fc.record({
 		beneficiaryId: fc.string(),
 		name: fc.string(),
 		offer: fc.option(fc.jsonObject(), { nil: undefined }),
@@ -73,27 +78,16 @@ describe('resources service', () => {
 	test('refresh offer', () => testRpc(refreshOffer, offerArb, resourcesService.offerRefreshed));
 	test('delete offer', () => testRpc(deleteOffer, offerArb, resourcesService.offerWithdrawn));
 
-	test('get wish', async () => {
-		const wish = new rpc.Wish();
-		const received = new Promise((resolve) =>
-			resourcesService.wishPolled.subscribe((t) => {
-				const [receivedWish, cb] = t;
-				resolve(expect(receivedWish).toEqual(wish.toObject()));
-				cb(null, wish);
-			})
-		);
-		await expect(getWish(wish).then((w) => w.toObject())).resolves.toEqual(wish.toObject());
-		await received;
+	const wishArb: Arbitrary<Wish<unknown>> = fc.record({
+		targetId: fc.string(),
+		name: fc.string(),
 	});
-
-	test('delete wish', async () => {
-		const wish = new rpc.Wish();
-		const received = new Promise((resolve) =>
-			resourcesService.wishDeleted.subscribe((receivedWish) =>
-				resolve(expect(receivedWish).toEqual(wish.toObject()))
-			)
-		);
-		await expect(wishDeleted(wish)).resolves.toEqual(new Empty());
-		await received;
-	});
+	const remoteOfferArb: Arbitrary<RemoteOffer<unknown>> = fc
+		.record({
+			isWithdrawn: fc.boolean(),
+			offer: fc.option(fc.jsonObject(), { nil: undefined }),
+		})
+		.filter(({ isWithdrawn, offer }) => offer === undefined || !isWithdrawn);
+	test('get wish', () => testRpc(getWish, wishArb, resourcesService.wishPolled, remoteOfferArb));
+	test('wish deleted', () => testRpc(wishDeleted, wishArb, resourcesService.wishDeleted));
 });

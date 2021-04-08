@@ -1,17 +1,17 @@
 import { never, sinkStream, SinkStream } from '@funkia/hareactive';
+import * as rpc from '@mjus/grpc-protos';
 import {
 	DeploymentOffer,
 	DeploymentService,
 	Offer,
 	OffersRuntime,
 	Remote,
+	RemoteOffer,
 	ResourcesService,
 	startDeploymentService,
 	startOffersRuntime,
 	Wish,
 } from '../src';
-import * as rpc from '@mjus/grpc-protos';
-import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 
 describe('offers runtime', () => {
 	let deploymentService: DeploymentService & {
@@ -26,7 +26,7 @@ describe('offers runtime', () => {
 		offerUpdated: SinkStream<Offer<unknown>>;
 		offerWithdrawn: SinkStream<[Offer<unknown>, (error: Error | null) => void]>;
 		wishPolled: SinkStream<
-			[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+			[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
 		>;
 		wishDeleted: SinkStream<Wish<unknown>>;
 	};
@@ -48,7 +48,10 @@ describe('offers runtime', () => {
 			offerUpdated: sinkStream<Offer<unknown>>(),
 			offerWithdrawn: sinkStream<[Offer<unknown>, (error: Error | null) => void]>(),
 			wishPolled: sinkStream<
-				[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+				[
+					Wish<unknown>,
+					(error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void
+				]
 			>(),
 			wishDeleted: sinkStream<Wish<unknown>>(),
 			stop: async () => {
@@ -146,7 +149,7 @@ describe('offers runtime', () => {
 		await threeUpdates;
 	});
 
-	const testWish: Wish<unknown> = { targetid: 'remote', name: 'test', iswithdrawn: false };
+	const testWish: Wish<unknown> = { targetId: 'remote', name: 'test' };
 	const testDeploymentOffer: DeploymentOffer<unknown> = { origin: 'remote', name: 'test' };
 	const noCb: () => void = () => {
 		// Intended to be empty
@@ -160,14 +163,11 @@ describe('offers runtime', () => {
 		await new Promise<void>((resolve) =>
 			resourcesService.wishPolled.push([
 				testWish,
-				(err, wish) => {
-					expect(wish).toEqual(
-						new rpc.Wish()
-							.setTargetid('remote')
-							.setName('test')
-							.setIswithdrawn(false)
-							.setOffer(Value.fromJavaScript({ fancy: ['array', 'val', 3] }))
-					);
+				(err, remoteOffer) => {
+					expect(remoteOffer).toStrictEqual({
+						isWithdrawn: false,
+						offer: { fancy: ['array', 'val', 3] },
+					});
 					resolve();
 				},
 			])
@@ -179,9 +179,7 @@ describe('offers runtime', () => {
 			resourcesService.wishPolled.push([
 				testWish,
 				(err, wish) => {
-					expect(wish).toEqual(
-						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(false)
-					);
+					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
 					resolve();
 				},
 			])
@@ -197,9 +195,7 @@ describe('offers runtime', () => {
 			resourcesService.wishPolled.push([
 				testWish,
 				(err, wish) => {
-					expect(wish).toEqual(
-						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(true)
-					);
+					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
 					resolve();
 				},
 			])
@@ -217,9 +213,7 @@ describe('offers runtime', () => {
 			resourcesService.wishPolled.push([
 				testWish,
 				(err, wish) => {
-					expect(wish).toEqual(
-						new rpc.Wish().setTargetid('remote').setName('test').setIswithdrawn(false)
-					);
+					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
 					resolve();
 				},
 			])
@@ -247,7 +241,7 @@ describe('offers runtime', () => {
 		await new Promise<void>((resolve) =>
 			resourcesService.wishPolled.push([
 				testWish,
-				(err, wish) => resolve(expect(wish?.getIswithdrawn()).toBe(false)),
+				(err, wish) => resolve(expect(wish?.isWithdrawn).toBe(false)),
 			])
 		);
 		const offerReleased = new Promise<void>((resolve) =>

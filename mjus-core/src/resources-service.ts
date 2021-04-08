@@ -32,21 +32,29 @@ export const toRpcOffer = <O>(offer: Offer<O>): rpc.Offer => {
 	return o;
 };
 
-export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish => {
-	const w = new rpc.Wish()
-		.setTargetid(wish.targetid)
-		.setName(wish.name)
-		.setIswithdrawn(wish.iswithdrawn);
-	if (wish.offer) w.setOffer(Value.fromJavaScript(wish.offer));
-	return w;
-};
-export const toWish = <O>(wish: rpc.Wish): Wish<O> => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type Wish<O> = { name: string; targetId: string };
+export const fromRpcWish = <O>(wish: rpc.Wish): Wish<O> => {
 	return {
-		targetid: wish.getTargetid(),
+		targetId: wish.getTargetid(),
 		name: wish.getName(),
-		iswithdrawn: wish.getIswithdrawn(),
-		offer: wish.getOffer()?.toJavaScript() as O,
 	};
+};
+export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish =>
+	new rpc.Wish().setTargetid(wish.targetId).setName(wish.name);
+
+// Is satisfied if offer not undefined. If satisfied, isWithdrawn must be false.
+export type RemoteOffer<O> = { isWithdrawn: boolean; offer?: O };
+export const fromRpcRemoteOffer = <O>(remoteOffer: rpc.RemoteOffer): RemoteOffer<O> => {
+	return {
+		isWithdrawn: remoteOffer.getIswithdrawn(),
+		offer: remoteOffer.getOffer()?.toJavaScript() as O,
+	};
+};
+export const toRpcRemoteOffer = <O>(remoteOffer: RemoteOffer<O>): rpc.RemoteOffer => {
+	const ro = new rpc.RemoteOffer().setIswithdrawn(remoteOffer.isWithdrawn);
+	if (remoteOffer.offer !== undefined) ro.setOffer(Value.fromJavaScript(remoteOffer.offer));
+	return ro;
 };
 
 let resourcesClientHost: string;
@@ -79,10 +87,12 @@ export const refreshOffer = <O>(offer: Offer<O>): Promise<void> =>
 	resourcesClientRpc((client, cb) => client.refreshOffer(toRpcOffer(offer), (err) => cb(err)));
 export const deleteOffer = <O>(offer: Offer<O>): Promise<void> =>
 	resourcesClientRpc((client, cb) => client.deleteOffer(toRpcOffer(offer), (err) => cb(err)));
-export const getWish = (wish: rpc.Wish): Promise<rpc.Wish> =>
-	resourcesClientRpc((client, cb) => client.getWish(wish, cb));
-export const wishDeleted = (wish: rpc.Wish): Promise<Empty> =>
-	resourcesClientRpc((client, cb) => client.wishDeleted(wish, cb));
+export const getWish = <O>(wish: Wish<O>): Promise<RemoteOffer<O>> =>
+	resourcesClientRpc((client, cb) =>
+		client.getWish(toRpcWish(wish), (err, ro) => cb(err, fromRpcRemoteOffer(ro)))
+	);
+export const wishDeleted = <O>(wish: Wish<O>): Promise<void> =>
+	resourcesClientRpc((client, cb) => client.wishDeleted(toRpcWish(wish), (err) => cb(err)));
 
 const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IResourcesServer } => {
 	class ResourcesServer implements rpc.IResourcesServer {
@@ -138,16 +148,22 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 			offerWithdrawn.push([fromRpcOffer(offer), (error) => cb(error, new Empty())]);
 		}
 
-		getWish(call: grpc.ServerUnaryCall<rpc.Wish, rpc.Wish>, cb: sendUnaryData<rpc.Wish>): void {
+		getWish(
+			call: grpc.ServerUnaryCall<rpc.Wish, rpc.RemoteOffer>,
+			cb: sendUnaryData<rpc.RemoteOffer>
+		): void {
 			const wish = call.request as rpc.Wish;
-			logger.info(wish, 'Polling remote offer');
-			wishPolled.push([toWish(wish), cb]);
+			logger.info(wish, 'Polling wish for remote offer');
+			wishPolled.push([
+				fromRpcWish(wish),
+				(err, ro) => cb(err, ro === null ? null : toRpcRemoteOffer(ro)),
+			]);
 		}
 
 		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Wish deleted');
-			wishDeleted.push(toWish(wish));
+			wishDeleted.push(fromRpcWish(wish));
 			cb(null, new Empty());
 		}
 	}
@@ -159,7 +175,7 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
 	const wishPolled = sinkStream<
-		[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
 	>();
 	const wishDeleted = sinkStream<Wish<unknown>>();
 
@@ -176,7 +192,6 @@ const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IReso
 	};
 };
 
-export type Wish<O> = Omit<rpc.Wish.AsObject, 'offer'> & { offer?: O };
 export type ResourcesService = {
 	remoteUpdated: Stream<Remote>;
 	remoteRefreshed: Stream<Remote>;
@@ -184,7 +199,9 @@ export type ResourcesService = {
 	offerUpdated: Stream<Offer<unknown>>;
 	offerRefreshed: Stream<Offer<unknown>>;
 	offerWithdrawn: Stream<[Offer<unknown>, (error: Error | null) => void]>;
-	wishPolled: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>;
+	wishPolled: Stream<
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
+	>;
 	wishDeleted: Stream<Wish<unknown>>;
 	stop: () => Promise<void>;
 };

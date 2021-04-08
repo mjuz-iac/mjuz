@@ -1,6 +1,6 @@
 import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/x/automation';
 import { Offer, RemoteConnection, Wish } from '../src/resources';
-import { emptyProgram, ResourcesService, startResourcesService, toRpcWish } from '../src';
+import { emptyProgram, ResourcesService, startResourcesService } from '../src';
 
 describe('resources', () => {
 	let stack: Stack;
@@ -151,7 +151,7 @@ describe('resources', () => {
 				return { w1, w2 };
 			};
 			// Respond that wishes are unsatisfied on poll
-			resourcesService.wishPolled.subscribe((p) => p[1](null, toRpcWish(p[0])));
+			resourcesService.wishPolled.subscribe((p) => p[1](null, { isWithdrawn: false }));
 
 			const { outputs } = await stack.up({ program });
 			expect(JSON.stringify(outputs)).toBe(

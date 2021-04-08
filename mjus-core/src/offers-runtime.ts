@@ -16,7 +16,7 @@ import {
 import { call, callP, catchE, IO, runIO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
-import { Offer, Remote, ResourcesService, Wish } from './resources-service';
+import { Offer, Remote, RemoteOffer, ResourcesService, Wish } from './resources-service';
 import { newLogger } from './logging';
 import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';
@@ -314,7 +314,7 @@ const offerWithdrawalSend = (
 
 const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	return {
-		origin: wish.targetid,
+		origin: wish.targetId,
 		name: wish.name,
 	};
 };
@@ -335,14 +335,14 @@ const offerRelease = (
 	);
 
 const wishPollAnswer = (
-	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>,
+	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.RemoteOffer | null) => void]>,
 	offers: Behavior<InboundOffers>
 ): Stream<IO<void>> =>
 	snapshotWith(
 		(poll, offers) => {
 			const [wish, cb] = poll;
-			const offerId = `${wish.targetid}:${wish.name}`;
-			const offer = new rpc.Wish().setTargetid(wish.targetid).setName(wish.name);
+			const offerId = `${wish.targetId}:${wish.name}`;
+			const offer = new rpc.RemoteOffer();
 			if (offerId in offers)
 				if (offers[offerId].withdrawn) offer.setIswithdrawn(true);
 				else
@@ -359,7 +359,9 @@ const wishPollAnswer = (
 // Do not answer with unsatisfied offers but wait
 // Not the intended semantics
 const delayUntilSatisfiedWishPollAnswer = (
-	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.Wish | null) => void]>,
+	polls: Stream<
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
+	>,
 	offers: Behavior<InboundOffers>
 ): Stream<IO<void>> =>
 	runNow(
@@ -367,17 +369,16 @@ const delayUntilSatisfiedWishPollAnswer = (
 			flatFuturesFrom(
 				polls.map((poll) => {
 					const [wish, cb] = poll;
-					const offerId = `${wish.targetid}:${wish.name}`;
-					const offer = new rpc.Wish().setTargetid(wish.targetid).setName(wish.name);
+					const offerId = `${wish.targetId}:${wish.name}`;
 					const offerPresent: Behavior<boolean> = offers.map(
 						(offers) => offerId in offers // && !offers[offerId].withdrawn
 					);
 					/*  eslint-disable prettier/prettier */
 					return runNow(when(offerPresent)).map(() => call(() =>
-						cb(null, offer.setOffer(Value.fromJavaScript(runNow(
+						cb(null, { isWithdrawn: false, offer: runNow(
 							sample(offers.map((offers) => (offers[offerId].offer?.offer || null) as JavaScriptValue))
-						))))
-					));
+						)}))
+					);
 					/* eslint-enable prettier/prettier */
 				})
 			)

@@ -21,11 +21,9 @@ service Resources {
 	rpc deleteOffer(Offer) returns (google.protobuf.Empty) {}
 	
 	// Polls for satisfaction of a wish. If offer is returned, the wish is satisfied with it. If isWithdrawn is `true`,
-	// the offer was withdrawn. If `isWithdrawn` is `false`the offer state is unknown and assumed to be unchanged.
-	// Assumes all wish properties are set.
-	rpc getWish(Wish) returns (Wish) {}
+	// the offer was withdrawn. If `isWithdrawn` is `false` the offer state is unknown and assumed to be unchanged.
+	rpc getWish(Wish) returns (RemoteOffer) {}
 	// Indicates that wish is not longer deployed.
-	// Assumes `name` and `targetId` are set.
 	rpc wishDeleted(Wish) returns (google.protobuf.Empty) {}
 }
 
@@ -44,8 +42,11 @@ message Offer {
 message Wish {
 	string name = 1;
 	string targetId = 2;
+}
+
+message RemoteOffer {
 	oneof val {
-		bool isWithdrawn = 3;
-		google.protobuf.Value offer = 4;
+		bool isWithdrawn = 1;
+		google.protobuf.Value offer = 2;
 	}
 }
