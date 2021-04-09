@@ -69,9 +69,7 @@ export class OfferProvider<O> implements dynamic.ResourceProvider {
 export type OfferArgs<O> = WrappedInputs<
 	Omit<OfferProps<O>, 'beneficiaryId'> & { beneficiary: RemoteConnection }
 >;
-export type OfferOutputs<O> = Readonly<
-	WrappedOutputs<Omit<OfferProps<O>, 'beneficiaryId'> & { beneficiary: RemoteConnection }>
->;
+export type OfferOutputs<O> = Readonly<WrappedOutputs<OfferProps<O>>>;
 export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 	constructor(
 		beneficiary: Input<RemoteConnection>,
@@ -103,7 +101,7 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 		super(new OfferProvider<O>(), name, props, opt);
 	}
 
-	public readonly beneficiary!: Output<RemoteConnection>;
+	public readonly beneficiaryId!: Output<string>;
 	public readonly offerName!: Output<string>;
 	public readonly offer!: Output<O>;
 }
