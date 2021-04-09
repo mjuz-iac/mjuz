@@ -23,7 +23,7 @@ import {
 	FutureArbConstraints,
 	streamArb,
 	StreamArbConstraints,
-} from './hareactive-arbitraries';
+} from './hareactive.arbs';
 
 describe('reaction runtime', () => {
 	describe('next action', () => {
