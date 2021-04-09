@@ -3,20 +3,17 @@ import {
 	deleteOffer,
 	deleteRemote,
 	getWish,
-	Offer,
 	refreshRemote,
-	Remote,
-	RemoteOffer,
 	ResourcesService,
 	startResourcesService,
 	updateOffer,
-	Wish,
 	wishDeleted,
 	refreshOffer,
 } from '../src';
 import { Stream } from '@funkia/hareactive';
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
+import { offerArb, remoteArb, remoteOfferArb, wishArb } from './resources-service.arbs';
 
 describe('resources service', () => {
 	let resourcesService: ResourcesService;
@@ -59,35 +56,15 @@ describe('resources service', () => {
 		);
 	};
 
-	const remoteArb: Arbitrary<Remote> = fc.record({
-		id: fc.string(),
-		host: fc.string(),
-		port: fc.nat(),
-	});
 	test('update remote', () => testRpc(updateRemote, remoteArb, resourcesService.remoteUpdated));
 	test('refresh remote', () =>
 		testRpc(refreshRemote, remoteArb, resourcesService.remoteRefreshed));
 	test('delete remote', () => testRpc(deleteRemote, remoteArb, resourcesService.remoteDeleted));
 
-	const offerArb: Arbitrary<Offer<unknown>> = fc.record({
-		beneficiaryId: fc.string(),
-		name: fc.string(),
-		offer: fc.option(fc.jsonObject(), { nil: undefined }),
-	});
 	test('update offer', () => testRpc(updateOffer, offerArb, resourcesService.offerUpdated));
 	test('refresh offer', () => testRpc(refreshOffer, offerArb, resourcesService.offerRefreshed));
 	test('delete offer', () => testRpc(deleteOffer, offerArb, resourcesService.offerWithdrawn));
 
-	const wishArb: Arbitrary<Wish<unknown>> = fc.record({
-		targetId: fc.string(),
-		name: fc.string(),
-	});
-	const remoteOfferArb: Arbitrary<RemoteOffer<unknown>> = fc
-		.record({
-			isWithdrawn: fc.boolean(),
-			offer: fc.option(fc.jsonObject(), { nil: undefined }),
-		})
-		.filter(({ isWithdrawn, offer }) => offer === undefined || !isWithdrawn);
 	test('get wish', () => testRpc(getWish, wishArb, resourcesService.wishPolled, remoteOfferArb));
 	test('wish deleted', () => testRpc(wishDeleted, wishArb, resourcesService.wishDeleted));
 });
