@@ -155,10 +155,9 @@ describe('resources', () => {
 
 			const { outputs } = await stack.up({ program });
 			expect(JSON.stringify(outputs)).toBe(
-				'{"w1":{"value":{"error":null,"id":"testRemote:testWish","isSatisfied":false,"offer":null,"offerName":"te' +
-					'stWish","target":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::' +
-					'testRemote:testWish"},"secret":false},"w2":{"value":{"error":null,"id":"testRemote:testWish","isSatisfie' +
-					'd":false,"offer":null,"offerName":"testWish","target":"testRemote","urn":"urn:pulumi:testStack::testProj' +
+				'{"w1":{"value":{"id":"testRemote:testWish","offerName":"te' +
+					'stWish","targetId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::' +
+					'testRemote:testWish"},"secret":false},"w2":{"value":{"id":"testRemote:testWish","offerName":"testWish","targetId":"testRemote","urn":"urn:pulumi:testStack::testProj' +
 					'ect::pulumi-nodejs:dynamic:Resource::directlyNamedTestWish"},"secret":false}}'
 			);
 		});

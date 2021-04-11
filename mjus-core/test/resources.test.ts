@@ -7,8 +7,11 @@ import {
 	OfferProvider,
 	RemoteConnectionProps,
 	RemoteConnectionProvider,
+	WishProps,
+	WishProvider,
 } from '../src/resources';
 import * as resourcesService from '../src/resources-service';
+import { remoteOfferArb } from './resources-service.arbs';
 
 describe('resources', () => {
 	describe('offer', () => {
@@ -311,6 +314,171 @@ describe('resources', () => {
 				deleteRemoteSpy.mockRestore();
 			};
 
+			return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
+		});
+	});
+
+	describe('wish', () => {
+		const propsArb: Arbitrary<WishProps<unknown>> = fc
+			.record({
+				targetId: fc.string(),
+				offerName: fc.string(),
+				offer: fc.option(fc.jsonObject(), { nil: undefined }),
+			})
+			.map((wish) => {
+				return { ...wish, isSatisfied: wish.offer !== undefined };
+			});
+
+		describe('check', () => {
+			type PredArgs = [
+				unknown | WishProps<unknown>,
+				WishProps<unknown>,
+				resourcesService.RemoteOffer<unknown>,
+				{ isSatisfied: boolean; offer?: unknown }
+			];
+			const pred = async ([oldProps, newProps, offer, expectedInputs]: PredArgs) => {
+				const getWishSpy = jest
+					.spyOn(resourcesService, 'getWish')
+					.mockImplementation(async (wish) => {
+						expect(wish).toStrictEqual({
+							targetId: newProps.targetId,
+							name: newProps.offerName,
+						} as resourcesService.Wish<unknown>);
+						return offer;
+					});
+				const result = await new WishProvider().check(oldProps, newProps);
+				expectedInputs = { ...newProps, ...expectedInputs };
+				if (expectedInputs.offer === undefined) delete expectedInputs.offer;
+				expect(result).toStrictEqual({ inputs: expectedInputs });
+				expect(getWishSpy).toHaveBeenCalledTimes(1);
+				getWishSpy.mockRestore();
+			};
+			test('offer state known', () => {
+				const previousProps = fc.oneof(fc.anything(), propsArb);
+				const knownOffer = remoteOfferArb.filter(
+					({ isWithdrawn, offer }) => isWithdrawn || offer !== undefined
+				);
+				const arbs = fc
+					.tuple(previousProps, propsArb, knownOffer)
+					.map<PredArgs>(([oldProps, newProps, offer]) => [
+						oldProps,
+						newProps,
+						offer,
+						{ isSatisfied: offer.offer !== undefined, offer: offer.offer },
+					]);
+				return fc.assert(fc.asyncProperty(arbs, pred));
+			});
+			test('offer state unknown and deployed', () => {
+				const arbs = fc
+					.tuple(propsArb, propsArb)
+					.map<PredArgs>(([oldProps, newProps]) => [
+						oldProps,
+						newProps,
+						{ isWithdrawn: false },
+						{ isSatisfied: oldProps.isSatisfied, offer: oldProps.offer },
+					]);
+				return fc.assert(fc.asyncProperty(arbs, pred));
+			});
+			test('offer state unknown and not deployed', () => {
+				const arbs = fc
+					.tuple(fc.anything(), propsArb)
+					.map<PredArgs>(([oldProps, newProps]) => [
+						oldProps,
+						newProps,
+						{ isWithdrawn: false },
+						{ isSatisfied: false, offer: undefined },
+					]);
+				return fc.assert(fc.asyncProperty(arbs, pred));
+			});
+		});
+
+		test('create', () => {
+			const pred = async (props: WishProps<unknown>) => {
+				expect(await new WishProvider().create(props)).toStrictEqual({
+					id: props.targetId + ':' + props.offerName,
+					outs: props,
+				});
+			};
+			return fc.assert(fc.asyncProperty(propsArb, pred));
+		});
+
+		describe('diff', () => {
+			test('unchanged', () => {
+				const pred = async (id: ID, props: WishProps<unknown>) => {
+					const result = await new WishProvider().diff(id, props, props);
+					expect(result).toStrictEqual({
+						changes: false,
+						replaces: [],
+						deleteBeforeReplace: true,
+					});
+				};
+				return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
+			});
+
+			type BiWish = [WishProps<unknown>, WishProps<unknown>];
+			test('update', () => {
+				const pred = async (id: ID, [oldProps, newProps]: BiWish) => {
+					const res = await new WishProvider().diff(id, oldProps, newProps);
+					expect(res).toStrictEqual({
+						changes: true,
+						replaces: [],
+						deleteBeforeReplace: true,
+					});
+				};
+				const propsArbs = fc
+					.tuple(propsArb, fc.jsonObject())
+					.filter(
+						([props, offer]) =>
+							props.isSatisfied && !isDeepStrictEqual(props.offer, offer)
+					)
+					.map<BiWish>(([props, offer]) => [props, { ...props, offer }]);
+				return fc.assert(fc.asyncProperty(fc.string(), propsArbs, pred));
+			});
+			test('replace', () => {
+				const pred = async (id: ID, [oldProps, newProps]: BiWish) => {
+					const res = await new WishProvider().diff(id, oldProps, newProps);
+					expect(res).toStrictEqual({
+						changes: true,
+						replaces: [
+							...(oldProps.targetId === newProps.targetId ? [] : ['targetId']),
+							...(oldProps.offerName === newProps.offerName ? [] : ['offerName']),
+							...(oldProps.isSatisfied === newProps.isSatisfied
+								? []
+								: ['isSatisfied']),
+						],
+						deleteBeforeReplace: true,
+					});
+				};
+				const propsArbs = fc
+					.tuple(propsArb, fc.string(), fc.string(), fc.boolean())
+					.filter(
+						([props, targetId, offerName, isSatisfied]) =>
+							props.targetId !== targetId ||
+							props.offerName !== offerName ||
+							props.isSatisfied !== isSatisfied
+					)
+					.map<BiWish>(([props, targetId, offerName, isSatisfied]) => [
+						props,
+						{ ...props, targetId, offerName, isSatisfied },
+					]);
+				return fc.assert(fc.asyncProperty(fc.string(), propsArbs, pred));
+			});
+		});
+
+		test('delete', () => {
+			const pred = async (id: ID, props: WishProps<unknown>) => {
+				const wishDeletedSpy = jest
+					.spyOn(resourcesService, 'wishDeleted')
+					.mockImplementation(async (wish) => {
+						expect(wish).toStrictEqual({
+							targetId: props.targetId,
+							name: props.offerName,
+						} as resourcesService.Wish<unknown>);
+					});
+				await new WishProvider().delete(id, props);
+				expect(wishDeletedSpy).toHaveBeenCalledTimes(1);
+				wishDeletedSpy.mockRestore();
+			};
 			return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));
 		});
 	});
