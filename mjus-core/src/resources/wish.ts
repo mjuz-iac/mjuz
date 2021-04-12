@@ -1,4 +1,4 @@
-import { CustomResourceOptions, dynamic, ID, Input, Inputs, Output } from '@pulumi/pulumi';
+import { CustomResourceOptions, dynamic, ID, Input, Output } from '@pulumi/pulumi';
 import { isDeepStrictEqual } from 'util';
 import { WrappedInputs, WrappedOutputs } from '../type-utils';
 import { RemoteConnection } from './remote-connection';
@@ -77,6 +77,14 @@ export class WishProvider<O> implements dynamic.ResourceProvider {
 		};
 	}
 
+	async update(
+		id: ID,
+		oldProps: WishProps<O>,
+		newProps: WishProps<O>
+	): Promise<dynamic.UpdateResult & { outs: WishProps<O> }> {
+		return { outs: newProps };
+	}
+
 	async delete(id: ID, props: WishProps<O>): Promise<void> {
 		await wishDeleted(toRsWish(props));
 	}
@@ -95,18 +103,22 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 		argsOrOfferName: WishArgs | string,
 		opts?: CustomResourceOptions
 	) {
-		const [name, props]: [string, Inputs] =
+		const [name, targetId, offerName]: [string, Input<RemoteConnection>, Input<string>] =
 			typeof nameOrTarget === 'string' && typeof argsOrOfferName !== 'string'
-				? [nameOrTarget, argsOrOfferName]
+				? [nameOrTarget, argsOrOfferName.target, argsOrOfferName.offerName]
 				: [
 						`${(<RemoteConnection>nameOrTarget).remoteId}:${argsOrOfferName}`,
-						{
-							target: nameOrTarget as Input<RemoteConnection>,
-							offerName: argsOrOfferName as string,
-						},
+						nameOrTarget as RemoteConnection,
+						argsOrOfferName as string,
 				  ];
-		props.targetId = props.target;
-		delete props.target;
+		const props: WrappedInputs<
+			Omit<WishProps<O>, 'targetId'> & { targetId: RemoteConnection }
+		> = {
+			targetId,
+			offerName,
+			isSatisfied: false,
+			offer: undefined,
+		};
 		super(new WishProvider<O>(), name, props, opts);
 	}
 

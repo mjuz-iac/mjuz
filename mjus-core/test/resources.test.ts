@@ -465,6 +465,18 @@ describe('resources', () => {
 			});
 		});
 
+		test('update', () => {
+			const pred = async (
+				id: ID,
+				oldProps: WishProps<unknown>,
+				newProps: WishProps<unknown>
+			) => {
+				const result = await new WishProvider().update(id, oldProps, newProps);
+				expect(result).toStrictEqual({ outs: newProps });
+			};
+			return fc.assert(fc.asyncProperty(fc.string(), propsArb, propsArb, pred));
+		});
+
 		test('delete', () => {
 			const pred = async (id: ID, props: WishProps<unknown>) => {
 				const wishDeletedSpy = jest
