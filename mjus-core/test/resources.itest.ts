@@ -1,6 +1,6 @@
 import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/x/automation';
 import { Offer, RemoteConnection, Wish } from '../src/resources';
-import { emptyProgram, ResourcesService, startResourcesService } from '../src';
+import { emptyProgram, RemoteOffer, ResourcesService, startResourcesService } from '../src';
 
 describe('resources', () => {
 	let stack: Stack;
@@ -84,7 +84,7 @@ describe('resources', () => {
 	});
 
 	describe('offer', () => {
-		test('deploy, replace, update, unchanged', async () => {
+		test('deploy, replace, unchanged, update', async () => {
 			const offerUpdatedCb = jest.fn();
 			resourcesService.offerUpdated.subscribe(offerUpdatedCb);
 			const offerRefreshedCb = jest.fn();
@@ -140,26 +140,105 @@ describe('resources', () => {
 	});
 
 	describe('wish', () => {
-		test('deploy unsatisfied wishes', async () => {
-			const program: PulumiFn = async () => {
-				const r = new RemoteConnection('testRemote', {});
-				const w1 = new Wish(r, 'testWish', undefined);
-				const w2 = new Wish('directlyNamedTestWish', {
-					offerName: 'testWish',
-					target: r,
-				});
-				return { w1, w2 };
-			};
-			// Respond that wishes are unsatisfied on poll
-			resourcesService.wishPolled.subscribe((p) => p[1](null, { isWithdrawn: false }));
+		const wishPolledCb = jest.fn();
+		const wishDeletedCb = jest.fn();
+		const expectActions = (polled: number, deleted: number) => {
+			expect(wishPolledCb.mock.calls.length).toBe(polled);
+			expect(wishDeletedCb.mock.calls.length).toBe(deleted);
+		};
 
-			const { outputs } = await stack.up({ program });
-			expect(JSON.stringify(outputs)).toBe(
-				'{"w1":{"value":{"id":"testRemote:testWish","offerName":"te' +
-					'stWish","targetId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::' +
-					'testRemote:testWish"},"secret":false},"w2":{"value":{"id":"testRemote:testWish","offerName":"testWish","targetId":"testRemote","urn":"urn:pulumi:testStack::testProj' +
-					'ect::pulumi-nodejs:dynamic:Resource::directlyNamedTestWish"},"secret":false}}'
+		beforeEach(() => {
+			wishPolledCb.mockClear();
+			resourcesService.wishPolled.subscribe(wishPolledCb);
+			wishDeletedCb.mockClear();
+			resourcesService.wishDeleted.subscribe(wishDeletedCb);
+		});
+
+		test('deploy satisfied wish, replace, unchanged, update', async () => {
+			let offerValue = { a: 1 } as unknown;
+			wishPolledCb.mockImplementation(async ([, cb]) =>
+				cb(null, { isWithdrawn: false, offer: offerValue })
 			);
+			// deploy
+			await expectOutput(async () => {
+				const r = new RemoteConnection('1stRemote', {});
+				const w = new Wish('2ndRemote:testWish', {
+					target: r,
+					offerName: 'testWish',
+				});
+				return { w };
+			}, '{"w":{"value":{"id":"1stRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"1stRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			expectActions(1, 0);
+
+			// replace
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const w = new Wish('2ndRemote:testWish', {
+					target: r,
+					offerName: 'testWish',
+				});
+				return { w };
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			expectActions(3, 1);
+
+			// no update with alternative constructor
+			offerValue = undefined;
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const w = new Wish(r, 'testWish');
+				return { w };
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			expectActions(4, 1);
+
+			// update
+			offerValue = { a: [true, 'b'] };
+			await expectOutput(async () => {
+				const r = new RemoteConnection('2ndRemote', {});
+				const w = new Wish(r, 'testWish');
+				return { w };
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":[true,"b"]},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			expectActions(5, 1);
+		});
+
+		test('unsatisfied wish, unchanged, satisfied, unsatisfied', async () => {
+			const offer: RemoteOffer<unknown> = { isWithdrawn: false };
+			wishPolledCb.mockImplementation(async ([, cb]) => cb(null, offer));
+			const program = async () => {
+				const r = new RemoteConnection('remote', {});
+				const w = new Wish(r, 'testWish');
+				return { w };
+			};
+
+			// unsatisfied
+			await expectOutput(
+				program,
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+			);
+			expectActions(1, 0);
+
+			// unchanged
+			offer.isWithdrawn = true;
+			await expectOutput(
+				program,
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+			);
+			expectActions(2, 0);
+
+			// satisfied
+			offer.offer = { a: 1 };
+			await expectOutput(
+				program,
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+			);
+			expectActions(4, 1);
+
+			// unsatisfied
+			delete offer.offer;
+			await expectOutput(
+				program,
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+			);
+			expectActions(6, 2);
 		});
 	});
 });
