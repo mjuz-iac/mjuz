@@ -37,7 +37,7 @@
       "**/*[^m]test.ts"
     ],
     "testEnvironment": "node",
-    "testTimeout": 30000,
+    "testTimeout": 60000,
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
     },
