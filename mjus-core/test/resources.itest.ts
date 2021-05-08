@@ -1,4 +1,4 @@
-import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/x/automation';
+import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/automation';
 import { Offer, RemoteConnection, Wish } from '../src/resources';
 import { emptyProgram, RemoteOffer, ResourcesService, startResourcesService } from '../src';
 

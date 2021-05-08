@@ -1,6 +1,6 @@
 import { deploy, destroy, emptyProgram, getStack, Stack } from '../src/pulumi';
 import { runIO } from '@funkia/io';
-import { LocalWorkspace } from '@pulumi/pulumi/x/automation';
+import { LocalWorkspace } from '@pulumi/pulumi/automation';
 import { Logger } from 'pino';
 import { instance, mock } from 'ts-mockito';
 

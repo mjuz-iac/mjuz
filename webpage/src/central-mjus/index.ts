@@ -9,7 +9,7 @@ import {
 } from '@mjus/core';
 import { at, changes, combine, sinkBehavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
-import { PulumiFn } from '@pulumi/pulumi/x/automation';
+import { PulumiFn } from '@pulumi/pulumi/automation';
 import { isDeepStrictEqual } from 'util';
 
 type State = { counter: number };

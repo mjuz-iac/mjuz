@@ -125,5 +125,5 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 	public readonly targetId!: Output<string>;
 	public readonly offerName!: Output<string>;
 	public readonly isSatisfied!: Output<boolean>;
-	public readonly offer!: Output<O | undefined>;
+	public readonly offer!: Output<O>;
 }

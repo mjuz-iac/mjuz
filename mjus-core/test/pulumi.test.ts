@@ -1,6 +1,6 @@
 import { call, catchE, IO, testIO } from '@funkia/io';
 import { Behavior } from '@funkia/hareactive';
-import * as pulumi from '@pulumi/pulumi/x/automation';
+import * as pulumi from '@pulumi/pulumi/automation';
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
 import { Logger } from 'pino';

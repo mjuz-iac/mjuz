@@ -1,13 +1,13 @@
 import { Behavior, runNow, sample } from '@funkia/hareactive';
 import { call, IO, throwE, withEffectsP } from '@funkia/io';
-import * as pulumi from '@pulumi/pulumi/x/automation';
+import * as pulumi from '@pulumi/pulumi/automation';
 import {
 	ConfigMap,
 	InlineProgramArgs,
 	LocalWorkspace,
 	LocalWorkspaceOptions,
 	PulumiFn,
-} from '@pulumi/pulumi/x/automation';
+} from '@pulumi/pulumi/automation';
 import { Logger } from 'pino';
 import { Action, newLogger } from '.';
 

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@pulumi/pulumi/automation/cmd.js b/node_modules/@pulumi/pulumi/automation/cmd.js
+index db07131..28754e7 100644
+--- a/node_modules/@pulumi/pulumi/automation/cmd.js
++++ b/node_modules/@pulumi/pulumi/automation/cmd.js
+@@ -40,7 +40,7 @@ function runPulumiCmd(args, cwd, additionalEnv, onOutput) {
+     args.push("--non-interactive");
+     const env = Object.assign(Object.assign({}, process.env), additionalEnv);
+     return new Promise((resolve, reject) => {
+-        const proc = childProcess.spawn("pulumi", args, { env, cwd });
++        const proc = childProcess.spawn("pulumi", args, { env, cwd, detached: true });
+         // TODO: write to buffers and avoid concatenation
+         let stdout = "";
+         let stderr = "";
