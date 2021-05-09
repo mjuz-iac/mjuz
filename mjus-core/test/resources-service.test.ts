@@ -14,11 +14,17 @@ import { Stream } from '@funkia/hareactive';
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
 import { offerArb, remoteArb, remoteOfferArb, wishArb } from './resources-service.arbs';
+import { Logger } from 'pino';
+import { instance, mock } from 'ts-mockito';
 
 describe('resources service', () => {
 	let resourcesService: ResourcesService;
 	beforeEach(async () => {
-		resourcesService = await startResourcesService('127.0.0.1', 19951);
+		resourcesService = await startResourcesService(
+			'127.0.0.1',
+			19951,
+			instance(mock<Logger>())
+		);
 	});
 	afterEach(async () => {
 		await resourcesService.stop();

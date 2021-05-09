@@ -1,5 +1,7 @@
 import { never, sinkStream, SinkStream } from '@funkia/hareactive';
 import * as rpc from '@mjus/grpc-protos';
+import { Logger } from 'pino';
+import { instance, mock } from 'ts-mockito';
 import {
 	DeploymentOffer,
 	DeploymentService,
@@ -63,10 +65,15 @@ describe('offers runtime', () => {
 			resourcesService,
 			never,
 			'test-deployment',
-			1
+			1,
+			instance(mock<Logger>())
 		);
 
-		remoteDeploymentService = await startDeploymentService('127.0.0.1', 19953);
+		remoteDeploymentService = await startDeploymentService(
+			'127.0.0.1',
+			19953,
+			instance(mock<Logger>())
+		);
 	});
 
 	afterEach(async () => {
@@ -117,7 +124,11 @@ describe('offers runtime', () => {
 			offer: { a: ['b', 'c'] },
 		});
 
-		remoteDeploymentService = await startDeploymentService('127.0.0.1', 19953);
+		remoteDeploymentService = await startDeploymentService(
+			'127.0.0.1',
+			19953,
+			instance(mock<Logger>())
+		);
 		const receivedOffer = new Promise<void>((resolve) =>
 			remoteDeploymentService.offerUpdated.subscribe((receivedOffer) =>
 				resolve(

@@ -3,12 +3,10 @@ import * as grpc from '@grpc/grpc-js';
 import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as rpc from '@mjus/grpc-protos';
-import { newLogger } from './logging';
 import { startService } from './service-utils';
 import { Typify } from './type-utils';
 import { Value } from 'google-protobuf/google/protobuf/struct_pb';
-
-const logger = newLogger('resources service');
+import { Logger } from 'pino';
 
 export type Remote = rpc.Remote.AsObject;
 export const fromRpcRemote = (remote: rpc.Remote): Remote => remote.toObject();
@@ -94,7 +92,9 @@ export const getWish = <O>(wish: Wish<O>): Promise<RemoteOffer<O>> =>
 export const wishDeleted = <O>(wish: Wish<O>): Promise<void> =>
 	resourcesClientRpc((client, cb) => client.wishDeleted(toRpcWish(wish), (err) => cb(err)));
 
-const resourceService = (): Omit<ResourcesService, 'stop'> & { server: rpc.IResourcesServer } => {
+const resourceService = (
+	logger: Logger
+): Omit<ResourcesService, 'stop'> & { server: rpc.IResourcesServer } => {
 	class ResourcesServer implements rpc.IResourcesServer {
 		[name: string]: grpc.UntypedHandleCall;
 
@@ -207,11 +207,12 @@ export type ResourcesService = {
 };
 export const startResourcesService = async (
 	host: string,
-	port: number
+	port: number,
+	logger: Logger
 ): Promise<ResourcesService> => {
 	resourcesClientHost = host;
 	resourcesClientPort = port;
-	const service = resourceService();
+	const service = resourceService(logger);
 	const stopService = await startService(
 		'resources',
 		rpc.ResourcesService as Typify<rpc.IResourcesService>,

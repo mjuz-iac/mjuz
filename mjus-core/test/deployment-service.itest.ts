@@ -2,12 +2,18 @@ import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { DeploymentService, startDeploymentService } from '../src';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
+import { Logger } from 'pino';
+import { instance, mock } from 'ts-mockito';
 
 describe('deployment service', () => {
 	let deploymentService: DeploymentService;
 	let deploymentClient: rpc.DeploymentClient;
 	beforeEach(async () => {
-		deploymentService = await startDeploymentService('127.0.0.1', 19952);
+		deploymentService = await startDeploymentService(
+			'127.0.0.1',
+			19952,
+			instance(mock<Logger>())
+		);
 		deploymentClient = new rpc.DeploymentClient(
 			'127.0.0.1:19952',
 			grpc.credentials.createInsecure()

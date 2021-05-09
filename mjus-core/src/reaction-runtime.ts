@@ -11,7 +11,6 @@ import {
 	toPromise,
 } from '@funkia/hareactive';
 import { call, callP, IO } from '@funkia/io';
-import { newLogger } from './logging';
 import { Logger } from 'pino';
 
 type FinalAction = 'terminate' | 'destroy';
@@ -59,7 +58,7 @@ export const reactionLoop = <S>(
 	initOperation: IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: Behavior<Behavior<Future<Action>>>,
-	logger: Logger = newLogger('reaction loop')
+	logger: Logger
 ): [Stream<IO<S>>, Future<S>] => {
 	const completed = sinkFuture<S>();
 	const actions = producerStream<IO<S>>((push) => {

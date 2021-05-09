@@ -17,12 +17,10 @@ import { call, callP, catchE, IO, runIO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, RemoteOffer, ResourcesService, Wish } from './resources-service';
-import { newLogger } from './logging';
 import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
-
-const logger = newLogger('offers runtime');
+import { Logger } from 'pino';
 
 const setupRemote = (remote: Remote): rpc.DeploymentClient =>
 	new rpc.DeploymentClient(`${remote.host}:${remote.port}`, grpc.credentials.createInsecure());
@@ -31,7 +29,8 @@ const shutdownRemote = (client: rpc.DeploymentClient): IO<void> => call(() => cl
 type Remotes = Record<string, rpc.DeploymentClient>;
 const accumRemotes = (
 	remoteCreated: Stream<Remote>,
-	remoteDeleted: Stream<Remote>
+	remoteDeleted: Stream<Remote>,
+	logger: Logger
 ): Behavior<Behavior<Remotes>> =>
 	accumFrom<['add' | 'remove', Remote], Remotes>(
 		(event, remotes) => {
@@ -71,7 +70,8 @@ type HeartbeatMonitor = {
  */
 const startHeartbeatMonitor = (
 	remotes: Behavior<Remotes>,
-	heartbeatInterval: number
+	heartbeatInterval: number,
+	logger: Logger
 ): HeartbeatMonitor => {
 	const connected = new Set<string>();
 	const connects = sinkStream<[string, rpc.DeploymentClient]>();
@@ -100,7 +100,8 @@ const startHeartbeatMonitor = (
 type Offers = Record<string, Offer<unknown>>;
 const accumOutboundOffers = (
 	offerUpdate: Stream<Offer<unknown>>,
-	offerWithdrawal: Stream<Offer<unknown>>
+	offerWithdrawal: Stream<Offer<unknown>>,
+	logger: Logger
 ): Behavior<Behavior<Offers>> =>
 	accumFrom<['upsert' | 'remove', Offer<unknown>], Offers>(
 		(event, offers) => {
@@ -140,7 +141,8 @@ const accumInboundOffers = (
 	offerUpdate: Stream<DeploymentOffer<unknown>>,
 	offerLocked: Stream<DeploymentOffer<unknown>>,
 	offerWithdrawal: Stream<DeploymentOffer<unknown>>,
-	offerReleased: Stream<DeploymentOffer<unknown>>
+	offerReleased: Stream<DeploymentOffer<unknown>>,
+	logger: Logger
 ): Behavior<Behavior<InboundOffers>> =>
 	accumFrom<InboundOfferEvent<unknown>, InboundOffers>(
 		(event, offers) => {
@@ -211,7 +213,8 @@ const toRpcDeploymentOffer = <O>(offer: Offer<O>, deploymentName: string): rpc.D
 const directOfferForward = (
 	offerUpdated: Stream<Offer<unknown>>,
 	remotes: Behavior<Remotes>,
-	deploymentName: string
+	deploymentName: string,
+	logger: Logger
 ): Stream<IO<rpc.Offer>> =>
 	snapshotWith<Offer<unknown>, Remotes, [rpc.DeploymentClient, Offer<unknown>]>(
 		(offer, remotes) => [remotes[offer.beneficiaryId], offer],
@@ -248,7 +251,8 @@ const directOfferForward = (
 const offerResend = (
 	offers: Behavior<Offers>,
 	connects: Stream<[string, rpc.DeploymentClient]>,
-	deploymentName: string
+	deploymentName: string,
+	logger: Logger
 ) =>
 	snapshotWith<[string, rpc.DeploymentClient], Offers, IO<void>>(
 		(remote, offers) => {
@@ -396,17 +400,19 @@ export const startOffersRuntime = async (
 	// state is reconstructed and offers can be safely released
 	initialized: Future<void>,
 	deploymentName: string,
-	heartbeatInterval: number
+	heartbeatInterval: number,
+	logger: Logger
 ): Promise<OffersRuntime> => {
 	const remotes: Behavior<Remotes> = runNow(
-		sample(accumRemotes(resources.remoteUpdated, resources.remoteDeleted))
+		sample(accumRemotes(resources.remoteUpdated, resources.remoteDeleted, logger))
 	);
-	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval);
+	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval, logger);
 	const outboundOffers: Behavior<Offers> = runNow(
 		sample(
 			accumOutboundOffers(
 				combine(resources.offerUpdated, resources.offerRefreshed),
-				resources.offerWithdrawn.map((t) => t[0])
+				resources.offerWithdrawn.map((t) => t[0]),
+				logger
 			)
 		)
 	);
@@ -416,16 +422,19 @@ export const startOffersRuntime = async (
 				deployment.offerUpdated,
 				resources.wishPolled.map((t) => toDeploymentOffer(t[0])),
 				deployment.offerWithdrawn.map((t) => t[0]),
-				resources.wishDeleted.map(toDeploymentOffer)
+				resources.wishDeleted.map(toDeploymentOffer),
+				logger
 			)
 		)
 	);
 
 	const offersDirectForward = runNow(
-		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName))
+		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName, logger))
 	);
 	const resendOffers = runNow(
-		performStream(offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName))
+		performStream(
+			offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName, logger)
+		)
 	);
 	const sendOfferWithdrawals = runNow(
 		sample(

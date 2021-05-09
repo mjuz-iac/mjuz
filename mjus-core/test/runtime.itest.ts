@@ -1,5 +1,7 @@
 import { Behavior, fromFunction, Future } from '@funkia/hareactive';
 import { IO } from '@funkia/io';
+import { Logger } from 'pino';
+import { deepEqual, instance, mock, when } from 'ts-mockito';
 import { Action, runDeployment } from '../src';
 
 describe('runtime', () => {
@@ -18,8 +20,21 @@ describe('runtime', () => {
 		);
 		remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
 
+		const loggerMock = mock<Logger>();
+		[
+			'resources service',
+			'deployment service',
+			'offers runtime',
+			'reaction loop',
+		].forEach((name) =>
+			when(loggerMock.child(deepEqual({ c: name }))).thenReturn(instance(loggerMock))
+		);
+
 		return expect(
-			runDeployment(IO.of('I'), operations, () => nextAction, undefined, true)
+			runDeployment(IO.of('I'), operations, () => nextAction, {
+				logger: instance(loggerMock),
+				disableExit: true,
+			})
 		).resolves.toBe('Idepdepdepter');
 	});
 });

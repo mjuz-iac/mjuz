@@ -1,6 +1,8 @@
 import { LocalWorkspace, PulumiFn, Stack } from '@pulumi/pulumi/automation';
 import { Offer, RemoteConnection, Wish } from '../src/resources';
 import { emptyProgram, RemoteOffer, ResourcesService, startResourcesService } from '../src';
+import { instance, mock } from 'ts-mockito';
+import { Logger } from 'pino';
 
 describe('resources', () => {
 	let stack: Stack;
@@ -22,7 +24,14 @@ describe('resources', () => {
 	afterAll(() => stack.workspace.removeStack('testStack'));
 
 	let resourcesService: ResourcesService;
-	beforeEach(async () => (resourcesService = await startResourcesService('127.0.0.1', 19951)));
+	beforeEach(
+		async () =>
+			(resourcesService = await startResourcesService(
+				'127.0.0.1',
+				19951,
+				instance(mock<Logger>())
+			))
+	);
 	afterEach(async () => {
 		await stack.destroy();
 		await resourcesService.stop();

@@ -20,8 +20,7 @@ import {
 	startResourcesService,
 } from '.';
 import * as yargs from 'yargs';
-
-const logger = newLogger('runtime');
+import { Logger } from 'pino';
 
 type RuntimeOptions = {
 	deploymentName: string;
@@ -31,6 +30,7 @@ type RuntimeOptions = {
 	resourcesHost: string;
 	resourcesPort: number;
 };
+
 const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 	yargs.options({
 		deploymentName: {
@@ -69,14 +69,22 @@ export const runDeployment = <S>(
 	initOperation: IO<S>,
 	operations: (action: Action) => (state: S) => IO<S>,
 	nextAction: (offerUpdates: Stream<void>) => Behavior<Behavior<Future<Action>>>,
-	options?: Partial<RuntimeOptions>,
-	disableExit = false
+	options: Partial<RuntimeOptions> & { logger?: Logger; disableExit?: true } = {}
 ): Promise<S> => {
+	const logger = options.logger || newLogger('runtime');
 	const setup = async () => {
 		const opts = getOptions(options || {});
 		const [resourcesService, deploymentService] = await Promise.all([
-			startResourcesService(opts.resourcesHost, opts.resourcesPort),
-			startDeploymentService(opts.deploymentHost, opts.deploymentPort),
+			startResourcesService(
+				opts.resourcesHost,
+				opts.resourcesPort,
+				logger.child({ c: 'resources service' })
+			),
+			startDeploymentService(
+				opts.deploymentHost,
+				opts.deploymentPort,
+				logger.child({ c: 'deployment service' })
+			),
 		]);
 		const initialized = sinkFuture<void>();
 		const offersRuntime = await startOffersRuntime(
@@ -84,13 +92,15 @@ export const runDeployment = <S>(
 			resourcesService,
 			initialized,
 			opts.deploymentName,
-			opts.heartbeatInterval
+			opts.heartbeatInterval,
+			logger.child({ c: 'offers runtime' })
 		);
 
 		const [stackActions, completed] = reactionLoop(
 			initOperation,
 			operations,
-			nextAction(offersRuntime.inboundOfferUpdates)
+			nextAction(offersRuntime.inboundOfferUpdates),
+			logger.child({ c: 'reaction loop' })
 		);
 		const stacks = runNow(performStream(stackActions));
 		runNow(flatFutures(stacks).map(nextOccurrenceFrom).flatMap(sample)).subscribe(() =>
@@ -112,6 +122,6 @@ export const runDeployment = <S>(
 		})
 		.finally(() => {
 			logger.info('Deployment terminated');
-			if (!disableExit) process.exit(0);
+			if (!options.disableExit) process.exit(0);
 		});
 };

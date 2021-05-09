@@ -3,11 +3,9 @@ import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as grpc from '@grpc/grpc-js';
 import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
 import * as rpc from '@mjus/grpc-protos';
-import { newLogger } from './logging';
 import { startService } from './service-utils';
 import { Typify } from './type-utils';
-
-const logger = newLogger('deployment service');
+import { Logger } from 'pino';
 
 export const toDeploymentOffer = <O>(offer: rpc.DeploymentOffer): DeploymentOffer<O> => {
 	return {
@@ -17,7 +15,9 @@ export const toDeploymentOffer = <O>(offer: rpc.DeploymentOffer): DeploymentOffe
 	};
 };
 
-const deploymentService = (): Omit<DeploymentService, 'stop'> & {
+const deploymentService = (
+	logger: Logger
+): Omit<DeploymentService, 'stop'> & {
 	server: rpc.IDeploymentServer;
 } => {
 	class DeploymentServer implements rpc.IDeploymentServer {
@@ -65,9 +65,10 @@ export type DeploymentService = {
 };
 export const startDeploymentService = async (
 	host: string,
-	port: number
+	port: number,
+	logger: Logger
 ): Promise<DeploymentService> => {
-	const service = deploymentService();
+	const service = deploymentService(logger);
 	const stopService = await startService(
 		'deployment',
 		rpc.DeploymentService as Typify<rpc.IDeploymentService>,
