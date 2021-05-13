@@ -32,7 +32,7 @@ describe('reaction runtime', () => {
 			constraints: (
 				t1: number,
 				t2: number
-			) => [StreamArbConstraints, FutureArbConstraints, FutureArbConstraints]
+			) => [StreamArbConstraints<unknown>, FutureArbConstraints, FutureArbConstraints]
 		): Arbitrary<Arbs> =>
 			fc.tuple(fc.integer(), fc.nat()).chain(([t1, deltaT2]) => {
 				const t2 = t1 + deltaT2 + 0.1;
