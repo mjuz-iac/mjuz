@@ -13,7 +13,7 @@ import {
 	Stream,
 	when,
 } from '@funkia/hareactive';
-import { call, callP, catchE, IO, runIO, withEffects } from '@funkia/io';
+import { call, callP, catchE, IO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjus/grpc-protos';
 import { Offer, Remote, RemoteOffer, ResourcesService, Wish } from './resources-service';
@@ -22,40 +22,38 @@ import { DeploymentOffer, DeploymentService } from './deployment-service';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { Logger } from 'pino';
 
-const setupRemote = (remote: Remote): rpc.DeploymentClient =>
-	new rpc.DeploymentClient(`${remote.host}:${remote.port}`, grpc.credentials.createInsecure());
-const shutdownRemote = (client: rpc.DeploymentClient): IO<void> => call(() => client.close());
-
-type Remotes = Record<string, rpc.DeploymentClient>;
-const accumRemotes = (
-	remoteCreated: Stream<Remote>,
-	remoteDeleted: Stream<Remote>,
-	logger: Logger
+type Remotes = Record<string, [Remote, rpc.DeploymentClient]>;
+export const accumRemotes = (
+	upsert: Stream<Remote>,
+	remove: Stream<Remote>
 ): Behavior<Behavior<Remotes>> =>
-	accumFrom<['add' | 'remove', Remote], Remotes>(
-		(event, remotes) => {
-			const [change, remote] = event;
+	accumFrom<['upsert' | 'remove', Remote], Remotes>(
+		([change, remote], remotes) => {
 			const update = { ...remotes };
-			if (change === 'add')
-				if (remote.id in update)
-					logger.warn(
-						`Remote ${remote.id} created even though it was already registered`
-					);
-				else update[remote.id] = setupRemote(remote);
-			else {
-				if (!(remote.id in update))
-					logger.warn(`Remote ${remote.id} deleted that was not registered`);
-				else {
-					runIO(shutdownRemote(update[remote.id]));
+			if (remote.id in remotes) {
+				const [oldRemote, client] = remotes[remote.id];
+				if (
+					change === 'remove' ||
+					remote.host !== oldRemote.host ||
+					remote.port !== oldRemote.port
+				) {
+					client.close();
 					delete update[remote.id];
 				}
+			}
+			if (change === 'upsert' && !(remote.id in update)) {
+				const client = new rpc.DeploymentClient(
+					`${remote.host}:${remote.port}`,
+					grpc.credentials.createInsecure()
+				);
+				update[remote.id] = [remote, client];
 			}
 			return update;
 		},
 		{},
-		combine<['remove' | 'add', Remote]>(
-			remoteCreated.map<['add', Remote]>((remote) => ['add', remote]),
-			remoteDeleted.map<['remove', Remote]>((remote) => ['remove', remote])
+		combine<['upsert' | 'remove', Remote]>(
+			remove.map<['remove', Remote]>((remote) => ['remove', remote]),
+			upsert.map<['upsert', Remote]>((remote) => ['upsert', remote])
 		)
 	);
 
@@ -78,7 +76,7 @@ const startHeartbeatMonitor = (
 
 	const interval = setInterval(() => {
 		Object.entries(runNow(sample(remotes))).forEach((t) => {
-			const [remoteId, client] = t;
+			const [remoteId, [, client]] = t;
 			client.heartbeat(new Empty(), (err) => {
 				if (err && connected.has(remoteId)) {
 					logger.info(`Remote ${remoteId} disconnected`);
@@ -86,7 +84,7 @@ const startHeartbeatMonitor = (
 				} else if (!err && !connected.has(remoteId)) {
 					logger.info(`Remote ${remoteId} connected`);
 					connected.add(remoteId);
-					connects.push(t);
+					connects.push([remoteId, client]);
 				}
 			});
 		});
@@ -216,14 +214,13 @@ const directOfferForward = (
 	deploymentName: string,
 	logger: Logger
 ): Stream<IO<rpc.Offer>> =>
-	snapshotWith<Offer<unknown>, Remotes, [rpc.DeploymentClient, Offer<unknown>]>(
+	snapshotWith<Offer<unknown>, Remotes, [[Remote, rpc.DeploymentClient], Offer<unknown>]>(
 		(offer, remotes) => [remotes[offer.beneficiaryId], offer],
 		remotes,
 		offerUpdated
 	)
-		.filter((t) => t[0] !== undefined)
-		.map((t) => {
-			const [remote, offer] = t;
+		.filter(([t]) => t !== undefined)
+		.map(([[, remote], offer]) => {
 			const sendOffer = (
 				resolve: (offer: Offer<unknown>) => void,
 				reject: (err: unknown) => void
@@ -292,7 +289,7 @@ const offerWithdrawalSend = (
 				if (offer.beneficiaryId in remotes)
 					return Future.of(
 						call(() => {
-							remotes[offer.beneficiaryId].releaseOffer(
+							remotes[offer.beneficiaryId][1].releaseOffer(
 								toRpcDeploymentOffer(offer, deploymentName),
 								// eslint-disable-next-line @typescript-eslint/no-empty-function
 								cb
@@ -403,15 +400,16 @@ export const startOffersRuntime = async (
 	heartbeatInterval: number,
 	logger: Logger
 ): Promise<OffersRuntime> => {
+	const remoteUpserts = resources.remoteUpdated.combine(resources.remoteRefreshed);
 	const remotes: Behavior<Remotes> = runNow(
-		sample(accumRemotes(resources.remoteUpdated, resources.remoteDeleted, logger))
+		sample(accumRemotes(remoteUpserts, resources.remoteDeleted))
 	);
 	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval, logger);
 	const outboundOffers: Behavior<Offers> = runNow(
 		sample(
 			accumOutboundOffers(
 				combine(resources.offerUpdated, resources.offerRefreshed),
-				resources.offerWithdrawn.map((t) => t[0]),
+				resources.offerWithdrawn.map(([o]) => o),
 				logger
 			)
 		)
@@ -420,22 +418,25 @@ export const startOffersRuntime = async (
 		sample(
 			accumInboundOffers(
 				deployment.offerUpdated,
-				resources.wishPolled.map((t) => toDeploymentOffer(t[0])),
-				deployment.offerWithdrawn.map((t) => t[0]),
+				resources.wishPolled.map(([w]) => toDeploymentOffer(w)),
+				deployment.offerWithdrawn.map(([o]) => o),
 				resources.wishDeleted.map(toDeploymentOffer),
 				logger
 			)
 		)
 	);
 
+	// Forward new and updated offers directly to beneficiary
 	const offersDirectForward = runNow(
 		performStream(directOfferForward(resources.offerUpdated, remotes, deploymentName, logger))
 	);
+	// When a remote (re)connects resend all offers it is the beneficiary of
 	const resendOffers = runNow(
 		performStream(
 			offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName, logger)
 		)
 	);
+	// Directly forward offer withdrawals to the beneficiary
 	const sendOfferWithdrawals = runNow(
 		sample(
 			offerWithdrawalSend(
@@ -446,15 +447,17 @@ export const startOffersRuntime = async (
 			)
 		).flatMap(performStream)
 	);
+	// Directly forward offer releases to withdrawing remote
 	const sendOfferRelease = runNow(
 		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
 	);
+	// Handle wish polls of own deployment
 	const answerWishPolls = runNow(
 		performStream(delayUntilSatisfiedWishPollAnswer(resources.wishPolled, inboundOffers))
 		// performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
 	);
 
-	const inboundOfferChanges: Stream<void> = combine(
+	const inboundOfferUpdates: Stream<void> = combine(
 		deployment.offerUpdated.mapTo(undefined),
 		deployment.offerWithdrawn.mapTo(undefined)
 	);
@@ -467,8 +470,5 @@ export const startOffersRuntime = async (
 		sendOfferRelease.deactivate();
 		answerWishPolls.deactivate();
 	};
-	return {
-		inboundOfferUpdates: inboundOfferChanges,
-		stop,
-	};
+	return { inboundOfferUpdates, stop };
 };
