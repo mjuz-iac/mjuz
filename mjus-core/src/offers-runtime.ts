@@ -2,13 +2,14 @@ import {
 	accumFrom,
 	Behavior,
 	combine,
+	flatFutures,
 	flatFuturesFrom,
 	Future,
 	nextOccurrenceFrom,
 	performStream,
 	runNow,
 	sample,
-	sinkStream,
+	snapshot,
 	snapshotWith,
 	Stream,
 	when,
@@ -21,6 +22,7 @@ import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_p
 import { DeploymentOffer, DeploymentService } from './deployment-service';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { Logger } from 'pino';
+import { intervalStream } from './utils';
 
 type Remotes = Record<string, [Remote, rpc.DeploymentClient]>;
 export const accumRemotes = (
@@ -57,43 +59,61 @@ export const accumRemotes = (
 		)
 	);
 
-type HeartbeatMonitor = {
-	// Fires a remote client with its id on the first successful heartbeat (initially and after disconnects)
-	connects: Stream<[string, rpc.DeploymentClient]>;
-	stop: () => void;
-};
 /**
  * @param remotes
- * @param heartbeatInterval in seconds
+ * @param trigger
+ * @param logger
+ * @return After each round all remotes with successful heartbeat
  */
-const startHeartbeatMonitor = (
+const sendHeartbeats = (
 	remotes: Behavior<Remotes>,
-	heartbeatInterval: number,
+	trigger: Stream<unknown>,
 	logger: Logger
-): HeartbeatMonitor => {
-	const connected = new Set<string>();
-	const connects = sinkStream<[string, rpc.DeploymentClient]>();
-
-	const interval = setInterval(() => {
-		Object.entries(runNow(sample(remotes))).forEach((t) => {
-			const [remoteId, [, client]] = t;
-			client.heartbeat(new Empty(), (err) => {
-				if (err && connected.has(remoteId)) {
-					logger.info(`Remote ${remoteId} disconnected`);
-					connected.delete(remoteId);
-				} else if (!err && !connected.has(remoteId)) {
-					logger.info(`Remote ${remoteId} connected`);
-					connected.add(remoteId);
-					connects.push([remoteId, client]);
-				}
-			});
+): Stream<IO<Remotes>> => {
+	const heartbeat = ([remote, client]: [Remote, rpc.DeploymentClient]) =>
+		new Promise<string | undefined>((resolve) => {
+			logger.trace(`Sending heartbeat to remote ${remote.id}`);
+			client.heartbeat(new Empty(), (err) => resolve(err ? undefined : remote.id));
 		});
-	}, heartbeatInterval * 1000);
-	return {
-		connects,
-		stop: () => clearInterval(interval),
-	};
+	const connectedRemotes = (remotes: Remotes, remoteIdsConnected: (string | undefined)[]) =>
+		Object.entries(remotes)
+			.filter(([remoteId]) => remoteIdsConnected.indexOf(remoteId) !== -1)
+			.reduce<Remotes>((remotes, [remoteId, remote]) => {
+				remotes[remoteId] = remote;
+				return remotes;
+			}, {});
+
+	return snapshot(remotes, trigger).map((remotes) =>
+		callP(() => Promise.all(Object.values(remotes).map(heartbeat))).map(
+			(remoteIdsConnected) => {
+				logger.trace(`Heartbeat successful for remotes: ${remoteIdsConnected}`);
+				return connectedRemotes(remotes, remoteIdsConnected);
+			}
+		)
+	);
 };
+
+const scanRemoteConnects = (
+	connectedRemotes: Stream<Remotes>,
+	logger: Logger
+): Behavior<Stream<IO<Remotes>>> =>
+	connectedRemotes
+		.scanFrom<[Remotes, Remotes]>(
+			(connected, [, prevConnected]) => {
+				const newConnects = { ...connected };
+				Object.keys(prevConnected).forEach((remoteId) => delete newConnects[remoteId]);
+				return [newConnects, connected];
+			},
+			[{}, {}]
+		)
+		.map((stream) =>
+			stream.map(([newConnects]) =>
+				call(() => {
+					if (Object.keys(newConnects).length > 0)
+						logger.debug(`Remotes connected: ${Object.keys(newConnects)}`);
+				}).flatMap(() => IO.of(newConnects))
+			)
+		);
 
 type Offers = Record<string, Offer<unknown>>;
 const accumOutboundOffers = (
@@ -102,8 +122,7 @@ const accumOutboundOffers = (
 	logger: Logger
 ): Behavior<Behavior<Offers>> =>
 	accumFrom<['upsert' | 'remove', Offer<unknown>], Offers>(
-		(event, offers) => {
-			const [change, offer] = event;
+		([change, offer], offers) => {
 			const update = { ...offers };
 			const offerId = `${offer.beneficiaryId}:${offer.name}`;
 
@@ -245,40 +264,38 @@ const directOfferForward = (
 			)
 		);
 
-const offerResend = (
+export const resendOffersOnConnect = (
 	offers: Behavior<Offers>,
-	connects: Stream<[string, rpc.DeploymentClient]>,
+	connects: Stream<Remotes>,
 	deploymentName: string,
 	logger: Logger
-) =>
-	snapshotWith<[string, rpc.DeploymentClient], Offers, IO<void>>(
-		(remote, offers) => {
-			const [remoteId, client] = remote;
-			const resends: IO<void>[] = Object.keys(offers)
-				.filter((offerId) => offerId.startsWith(`${remoteId}:`))
-				/*  eslint-disable prettier/prettier */
-				.map((offerId) => call(() => {
-					client.offer(toRpcDeploymentOffer(offers[offerId], deploymentName),
-						(err) => {
-								if (err) logger.warn(err, `Failed to resend offer ${offerId}`);
-						}
-					);
-				}));
-				/*  eslint-enable prettier/prettier */
-			return resends.reduce(
-				(a, b) => a.flatMap(() => b),
-				call(() => {
-					// Intended to be empty
-				})
-			);
-		},
+): Stream<IO<void>> =>
+	snapshotWith<Remotes, Offers, IO<void>>(
+		(remotes, offers) =>
+			Object.values(offers)
+				.filter((offer) => offer.beneficiaryId in remotes)
+				.map((offer) =>
+					call(() => {
+						remotes[offer.beneficiaryId][1].offer(
+							toRpcDeploymentOffer(offer, deploymentName),
+							(err) => {
+								if (err)
+									logger.warn(
+										err,
+										`Failed to resend offer ${offer.name} to ${offer.beneficiaryId}`
+									);
+							}
+						);
+					})
+				)
+				.reduce((a, b) => a.flatMap(() => b), IO.of(undefined)),
 		offers,
 		connects
 	);
 
 const offerWithdrawalSend = (
 	remotes: Behavior<Remotes>,
-	connects: Stream<[string, rpc.DeploymentClient]>,
+	connects: Stream<Remotes>,
 	withdrawals: Stream<[Offer<unknown>, (error: Error | null) => void]>,
 	deploymentName: string
 ): Behavior<Stream<IO<void>>> =>
@@ -298,8 +315,8 @@ const offerWithdrawalSend = (
 					);
 				/*  eslint-disable prettier/prettier */ else
 				return runNow(sample(nextOccurrenceFrom(
-					connects.filter((remote) => remote[0] === offer.beneficiaryId).map((remote) => call(() => {
-						remote[1].releaseOffer(
+					connects.filter((remotes) => offer.beneficiaryId in remotes).map((remotes) => call(() => {
+						remotes[offer.beneficiaryId][1].releaseOffer(
 							toRpcDeploymentOffer(offer, deploymentName),
 							// eslint-disable-next-line @typescript-eslint/no-empty-function
 							cb
@@ -404,7 +421,15 @@ export const startOffersRuntime = async (
 	const remotes: Behavior<Remotes> = runNow(
 		sample(accumRemotes(remoteUpserts, resources.remoteDeleted))
 	);
-	const heartbeatMonitor = startHeartbeatMonitor(remotes, heartbeatInterval, logger);
+	const heartbeatTrigger = intervalStream(heartbeatInterval * 1000);
+	const connectedRemotes: Stream<Remotes> = runNow(
+		performStream(sendHeartbeats(remotes, heartbeatTrigger, logger)).flatMap(flatFutures)
+	);
+	const remoteConnects = runNow(
+		sample(scanRemoteConnects(connectedRemotes, logger))
+			.flatMap(performStream)
+			.flatMap(flatFutures)
+	);
 	const outboundOffers: Behavior<Offers> = runNow(
 		sample(
 			accumOutboundOffers(
@@ -432,19 +457,12 @@ export const startOffersRuntime = async (
 	);
 	// When a remote (re)connects resend all offers it is the beneficiary of
 	const resendOffers = runNow(
-		performStream(
-			offerResend(outboundOffers, heartbeatMonitor.connects, deploymentName, logger)
-		)
+		performStream(resendOffersOnConnect(outboundOffers, remoteConnects, deploymentName, logger))
 	);
 	// Directly forward offer withdrawals to the beneficiary
 	const sendOfferWithdrawals = runNow(
 		sample(
-			offerWithdrawalSend(
-				remotes,
-				heartbeatMonitor.connects,
-				resources.offerWithdrawn,
-				deploymentName
-			)
+			offerWithdrawalSend(remotes, remoteConnects, resources.offerWithdrawn, deploymentName)
 		).flatMap(performStream)
 	);
 	// Directly forward offer releases to withdrawing remote
@@ -463,7 +481,7 @@ export const startOffersRuntime = async (
 	);
 
 	const stop = async () => {
-		heartbeatMonitor.stop();
+		heartbeatTrigger.deactivate();
 		offersDirectForward.deactivate();
 		resendOffers.deactivate();
 		sendOfferWithdrawals.deactivate();
