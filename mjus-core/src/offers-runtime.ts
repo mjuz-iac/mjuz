@@ -353,21 +353,20 @@ const offerRelease = (
 	);
 
 const wishPollAnswer = (
-	polls: Stream<[Wish<unknown>, (error: Error | null, wish: rpc.RemoteOffer | null) => void]>,
+	polls: Stream<
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
+	>,
 	offers: Behavior<InboundOffers>
 ): Stream<IO<void>> =>
 	snapshotWith(
-		(poll, offers) => {
-			const [wish, cb] = poll;
+		([wish, cb], offers) => {
 			const offerId = `${wish.targetId}:${wish.name}`;
-			const offer = new rpc.RemoteOffer();
-			if (offerId in offers)
-				if (offers[offerId].withdrawn) offer.setIswithdrawn(true);
-				else
-					offer.setOffer(
-						Value.fromJavaScript(offers[offerId].offer?.offer as JavaScriptValue)
-					);
-			else offer.setIswithdrawn(false);
+			const offer: RemoteOffer<unknown> =
+				offerId in offers
+					? offers[offerId].withdrawn
+						? { isWithdrawn: true }
+						: { isWithdrawn: false, offer: offers[offerId].offer?.offer }
+					: { isWithdrawn: false };
 			return call(() => cb(null, offer));
 		},
 		offers,
@@ -471,8 +470,8 @@ export const startOffersRuntime = async (
 	);
 	// Handle wish polls of own deployment
 	const answerWishPolls = runNow(
-		performStream(delayUntilSatisfiedWishPollAnswer(resources.wishPolled, inboundOffers))
-		// performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
+		// performStream(delayUntilSatisfiedWishPollAnswer(resources.wishPolled, inboundOffers))
+		performStream(wishPollAnswer(resources.wishPolled, inboundOffers))
 	);
 
 	const inboundOfferUpdates: Stream<void> = combine(

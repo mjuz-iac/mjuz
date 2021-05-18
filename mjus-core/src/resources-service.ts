@@ -154,10 +154,7 @@ const resourceService = (
 		): void {
 			const wish = call.request as rpc.Wish;
 			logger.info(wish, 'Polling wish for remote offer');
-			wishPolled.push([
-				fromRpcWish(wish),
-				(err, ro) => cb(err, ro === null ? null : toRpcRemoteOffer(ro)),
-			]);
+			wishPolled.push([fromRpcWish(wish), (err, ro) => cb(err, toRpcRemoteOffer(ro))]);
 		}
 
 		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
@@ -175,7 +172,7 @@ const resourceService = (
 	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
 	const wishPolled = sinkStream<
-		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
 	>();
 	const wishDeleted = sinkStream<Wish<unknown>>();
 
@@ -200,7 +197,7 @@ export type ResourcesService = {
 	offerRefreshed: Stream<Offer<unknown>>;
 	offerWithdrawn: Stream<[Offer<unknown>, (error: Error | null) => void]>;
 	wishPolled: Stream<
-		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
+		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
 	>;
 	wishDeleted: Stream<Wish<unknown>>;
 	stop: () => Promise<void>;

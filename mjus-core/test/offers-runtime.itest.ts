@@ -259,12 +259,12 @@ describe('offers runtime', () => {
 			deploymentService.offerWithdrawn.push([testDeploymentOffer, resolve])
 		);
 		// Only work with correct semantics, not with delayed wish poll answer
-		// await new Promise<void>((resolve) =>
-		// 	resourcesService.wishPolled.push([
-		// 		testWish,
-		// 		(err, wish) => resolve(expect(wish?.getIswithdrawn()).toBe(true)),
-		// 	])
-		// );
+		await new Promise<void>((resolve) =>
+			resourcesService.wishPolled.push([
+				testWish,
+				(err, wish) => resolve(expect(wish?.isWithdrawn).toBe(true)),
+			])
+		);
 		resourcesService.wishDeleted.push(testWish);
 		await offerReleased;
 	});

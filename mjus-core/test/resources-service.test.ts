@@ -41,7 +41,7 @@ describe('resources service', () => {
 		requestFn: (v: T) => void,
 		requestArb: Arbitrary<T>,
 		stream: Stream<
-			T | [T, (err: Error | null) => void] | [T, (err: Error | null, res: R | null) => void]
+			T | [T, (err: Error | null) => void] | [T, (err: Error | null, res: R) => void]
 		>,
 		responseArb?: Arbitrary<R>
 	) => {
