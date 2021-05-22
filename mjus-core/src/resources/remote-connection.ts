@@ -83,7 +83,7 @@ export class RemoteConnection extends dynamic.Resource implements RemoteConnecti
 			host: args.host || DEFAULT_HOST,
 			port: args.port || DEFAULT_PORT,
 		};
-		super(new RemoteConnectionProvider(), name, props, opts);
+		super(new RemoteConnectionProvider(), `remote-connection$${name}`, props, opts);
 		this.remoteId = args.remoteId || name;
 	}
 

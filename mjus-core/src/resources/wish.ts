@@ -119,7 +119,7 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 			isSatisfied: false,
 			offer: undefined,
 		};
-		super(new WishProvider<O>(), name, props, opts);
+		super(new WishProvider<O>(), `wish$${name}`, props, opts);
 	}
 
 	public readonly targetId!: Output<string>;

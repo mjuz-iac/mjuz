@@ -60,14 +60,14 @@ describe('resources', () => {
 			await expectOutput(async () => {
 				const r = new RemoteConnection('testRemote', {});
 				return { r };
-			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote","port":19952,"remoteId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote","port":19952,"remoteId":"testRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote-connection$testRemote"},"secret":false}}');
 			expectActions(1, 0, 0);
 
 			// replace
 			await expectOutput(async () => {
 				const r = new RemoteConnection('testRemote', { remoteId: 'testRemote2' });
 				return { r };
-			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":19952,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":19952,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote-connection$testRemote"},"secret":false}}');
 			expectActions(2, 1, 1);
 
 			// update
@@ -77,7 +77,7 @@ describe('resources', () => {
 					port: 123,
 				});
 				return { r };
-			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote-connection$testRemote"},"secret":false}}');
 			expectActions(3, 2, 1);
 
 			// no update
@@ -87,7 +87,7 @@ describe('resources', () => {
 					port: 123,
 				});
 				return { r };
-			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::testRemote"},"secret":false}}');
+			}, '{"r":{"value":{"host":"127.0.0.1","id":"testRemote2","port":123,"remoteId":"testRemote2","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote-connection$testRemote"},"secret":false}}');
 			expectActions(3, 3, 1);
 		});
 	});
@@ -115,7 +115,7 @@ describe('resources', () => {
 					offer: { a: 1 },
 				});
 				return { o };
-			}, '{"o":{"value":{"beneficiaryId":"1stRemote","id":"1stRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			}, '{"o":{"value":{"beneficiaryId":"1stRemote","id":"1stRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::offer$2ndRemote:testOffer"},"secret":false}}');
 			expectActions(1, 0, 0);
 
 			// replace
@@ -127,7 +127,7 @@ describe('resources', () => {
 					offer: { a: 1 },
 				});
 				return { o };
-			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::offer$2ndRemote:testOffer"},"secret":false}}');
 			expectActions(2, 1, 1);
 
 			// no update with alternative constructor
@@ -135,7 +135,7 @@ describe('resources', () => {
 				const r = new RemoteConnection('2ndRemote', {});
 				const o = new Offer(r, 'testOffer', { a: 1 });
 				return { o };
-			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":1},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::offer$2ndRemote:testOffer"},"secret":false}}');
 			expectActions(2, 2, 1);
 
 			// update
@@ -143,7 +143,7 @@ describe('resources', () => {
 				const r = new RemoteConnection('2ndRemote', {});
 				const o = new Offer(r, 'testOffer', { a: [true, 'b'] });
 				return { o };
-			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":[true,"b"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testOffer"},"secret":false}}');
+			}, '{"o":{"value":{"beneficiaryId":"2ndRemote","id":"2ndRemote:testOffer","offer":{"a":[true,"b"]},"offerName":"testOffer","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::offer$2ndRemote:testOffer"},"secret":false}}');
 			expectActions(3, 3, 1);
 		});
 	});
@@ -176,7 +176,7 @@ describe('resources', () => {
 					offerName: 'testWish',
 				});
 				return { w };
-			}, '{"w":{"value":{"id":"1stRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"1stRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			}, '{"w":{"value":{"id":"1stRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"1stRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$2ndRemote:testWish"},"secret":false}}');
 			expectActions(1, 0);
 
 			// replace
@@ -187,7 +187,7 @@ describe('resources', () => {
 					offerName: 'testWish',
 				});
 				return { w };
-			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$2ndRemote:testWish"},"secret":false}}');
 			expectActions(3, 1);
 
 			// no update with alternative constructor
@@ -196,7 +196,7 @@ describe('resources', () => {
 				const r = new RemoteConnection('2ndRemote', {});
 				const w = new Wish(r, 'testWish');
 				return { w };
-			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$2ndRemote:testWish"},"secret":false}}');
 			expectActions(4, 1);
 
 			// update
@@ -205,7 +205,7 @@ describe('resources', () => {
 				const r = new RemoteConnection('2ndRemote', {});
 				const w = new Wish(r, 'testWish');
 				return { w };
-			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":[true,"b"]},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::2ndRemote:testWish"},"secret":false}}');
+			}, '{"w":{"value":{"id":"2ndRemote:testWish","isSatisfied":true,"offer":{"a":[true,"b"]},"offerName":"testWish","targetId":"2ndRemote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$2ndRemote:testWish"},"secret":false}}');
 			expectActions(5, 1);
 		});
 
@@ -221,7 +221,7 @@ describe('resources', () => {
 			// unsatisfied
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(1, 0);
 
@@ -229,7 +229,7 @@ describe('resources', () => {
 			offer.isWithdrawn = true;
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(2, 0);
 
@@ -237,7 +237,7 @@ describe('resources', () => {
 			offer.offer = { a: 1 };
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(4, 1);
 
@@ -245,7 +245,7 @@ describe('resources', () => {
 			delete offer.offer;
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(6, 2);
 		});

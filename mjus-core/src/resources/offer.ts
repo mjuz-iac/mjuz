@@ -98,7 +98,7 @@ export class Offer<O> extends dynamic.Resource implements OfferOutputs<O> {
 				  ];
 		props.beneficiaryId = props.beneficiary;
 		delete props.beneficiary;
-		super(new OfferProvider<O>(), name, props, opt);
+		super(new OfferProvider<O>(), `offer$${name}`, props, opt);
 	}
 
 	public readonly beneficiaryId!: Output<string>;
