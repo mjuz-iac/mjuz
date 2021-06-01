@@ -63,7 +63,7 @@ const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 			default: defaults.heartbeatInterval || 5,
 			description: 'Heartbeat interval on connections between deployments in seconds',
 		},
-	}).argv;
+	}).argv as RuntimeOptions;
 
 export const runDeployment = <S>(
 	initOperation: IO<S>,

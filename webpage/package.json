@@ -26,21 +26,21 @@
     "url": "https://github.com/allprojects/decentralized-deployments/issues"
   },
   "devDependencies": {
-    "@types/node": "15.0.2",
-    "@typescript-eslint/eslint-plugin": "4.22.1",
-    "@typescript-eslint/parser": "4.22.1",
-    "eslint": "7.26.0",
+    "@types/node": "15.6.1",
+    "@typescript-eslint/eslint-plugin": "4.26.0",
+    "@typescript-eslint/parser": "4.26.0",
+    "eslint": "7.27.0",
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-prettier": "3.4.0",
-    "prettier": "2.2.1",
+    "prettier": "2.3.0",
     "typescript": "4.2.4"
   },
   "dependencies": {
     "@funkia/hareactive": "git://github.com/dsoko2/hareactive#8b1f46f5f6b1bc5846d8ea1a8097b58e4726d985",
     "@funkia/io": "git://github.com/dsoko2/io#0573c2330cfcfdb3df570a2b3a4c2b33ff71b3f3",
-    "@grpc/grpc-js": "1.3.0",
+    "@grpc/grpc-js": "1.3.2",
     "@mjus/core": "0.0.0",
-    "@pulumi/aws": "4.3.0",
+    "@pulumi/aws": "4.6.0",
     "@pulumi/pulumi": "3.2.1",
     "pino": "6.11.3"
   }
