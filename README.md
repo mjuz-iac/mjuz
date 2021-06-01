@@ -7,7 +7,6 @@ Decentralized Deployments IaC using Pulumi and TypeScript.
 `├── mjuz-core` µs core SDK and runtime\
 `├── mjuz-grpc-protos` µs GRPC prototype definitions\
 `├── patches` manual patches applied to dependencies (mostly quick-fixes)\
-`├── teastore` TeaStore Case Study\
 `└── webpage` Webpage Case Study
 
 ## Development Setup

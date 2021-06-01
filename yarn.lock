@@ -851,29 +851,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@mjuz/teastore@workspace:teastore":
-  version: 0.0.0-use.local
-  resolution: "@mjuz/teastore@workspace:teastore"
-  dependencies:
-    "@funkia/hareactive": "git://github.com/dsoko2/hareactive#8b1f46f5f6b1bc5846d8ea1a8097b58e4726d985"
-    "@funkia/io": "git://github.com/dsoko2/io#0573c2330cfcfdb3df570a2b3a4c2b33ff71b3f3"
-    "@grpc/grpc-js": 1.3.2
-    "@mjuz/core": 0.0.0
-    "@pulumi/aws": 4.6.0
-    "@pulumi/awsx": 0.30.0
-    "@pulumi/pulumi": 3.2.1
-    "@types/node": 15.6.1
-    "@typescript-eslint/eslint-plugin": 4.26.0
-    "@typescript-eslint/parser": 4.26.0
-    eslint: 7.27.0
-    eslint-config-prettier: 8.3.0
-    eslint-plugin-prettier: 3.4.0
-    pino: 6.11.3
-    prettier: 2.3.0
-    typescript: 4.2.4
-  languageName: unknown
-  linkType: soft
-
 "@mjuz/webpage@workspace:webpage":
   version: 0.0.0-use.local
   resolution: "@mjuz/webpage@workspace:webpage"
@@ -1020,30 +997,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pulumi/awsx@npm:0.30.0":
-  version: 0.30.0
-  resolution: "@pulumi/awsx@npm:0.30.0"
-  dependencies:
-    "@pulumi/docker": ^3.0.0
-    "@types/aws-lambda": ^8.10.23
-    mime: ^2.0.0
-  peerDependencies:
-    "@pulumi/aws": ^4.0.0
-    "@pulumi/pulumi": ^3.0.0
-  checksum: 3a97e8c9563fff953310f681ba871751c68ffe4382c4d605339b24b18ce93dbab8d35ffa643d895cd8e73f0c62ca2e09a519cdedf2387a1ccbd68ff828d05f0b
-  languageName: node
-  linkType: hard
-
-"@pulumi/docker@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "@pulumi/docker@npm:3.0.0"
-  dependencies:
-    "@pulumi/pulumi": ^3.0.0
-    semver: ^5.4.0
-  checksum: ebbaf71437caaf82abddc95f7284827a281cb0a1f6d0970848776451ffe8d2e6c4b7e60fd726d66627659dcfa512ff1844357959b09fe636b20a69d1cd198dbb
-  languageName: node
-  linkType: hard
-
 "@pulumi/pulumi@npm:3.2.1, @pulumi/pulumi@npm:^3.0.0":
   version: 3.2.1
   resolution: "@pulumi/pulumi@npm:3.2.1"
@@ -1125,13 +1078,6 @@ __metadata:
   version: 1.0.1
   resolution: "@tsconfig/node16@npm:1.0.1"
   checksum: c389a4a81c291a27b96705de7fbe46d29aa4eb771450a41dfc075d89e1fdd63141898043a0d9f627460a1c409d06635a044dc4b3a4516173769a7d0a1558c51d
-  languageName: node
-  linkType: hard
-
-"@types/aws-lambda@npm:^8.10.23":
-  version: 8.10.76
-  resolution: "@types/aws-lambda@npm:8.10.76"
-  checksum: 2e325f45b59264a299475db07312a173422c91ae88a8eb4933a169cab5c19e20708ecc44ee5f53fd469034580b02235508ac0136d8134ddc93cd77189be80039
   languageName: node
   linkType: hard
 
@@ -5538,7 +5484,7 @@ fsevents@^2.3.2:
   languageName: node
   linkType: hard
 
-"semver@npm:2 || 3 || 4 || 5, semver@npm:^5.3.0, semver@npm:^5.4.0, semver@npm:^5.5.0, semver@npm:^5.6.0":
+"semver@npm:2 || 3 || 4 || 5, semver@npm:^5.3.0, semver@npm:^5.5.0, semver@npm:^5.6.0":
   version: 5.7.1
   resolution: "semver@npm:5.7.1"
   bin:
