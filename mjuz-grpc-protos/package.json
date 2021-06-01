@@ -1,5 +1,5 @@
 {
-  "name": "@mjus/grpc-protos",
+  "name": "@mjuz/grpc-protos",
   "version": "0.0.0",
   "description": "µs gRPC Protocol Buffer Descriptions",
   "author": "Daniel Sokolowski <github@d.sokolowski.org>",

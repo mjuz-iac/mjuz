@@ -1,5 +1,5 @@
 import { never, sinkStream, SinkStream } from '@funkia/hareactive';
-import * as rpc from '@mjus/grpc-protos';
+import * as rpc from '@mjuz/grpc-protos';
 import { Logger } from 'pino';
 import { instance, mock } from 'ts-mockito';
 import {

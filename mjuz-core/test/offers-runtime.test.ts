@@ -1,7 +1,7 @@
 import { Behavior, Stream } from '@funkia/hareactive';
 import { testAt, testStreamFromArray } from '@funkia/hareactive/testing';
 import * as grpc from '@grpc/grpc-js';
-import { DeploymentClient } from '@mjus/grpc-protos';
+import { DeploymentClient } from '@mjuz/grpc-protos';
 import * as fc from 'fast-check';
 import { Arbitrary } from 'fast-check';
 import { instance, mock, resetCalls, verify } from 'ts-mockito';
@@ -9,11 +9,11 @@ import { accumRemotes, Remote } from '../src';
 import { streamArb } from './hareactive.arbs';
 import { remoteArb } from './resources-service.arbs';
 
-jest.mock('@mjus/grpc-protos', () => ({
-	...jest.requireActual('@mjus/grpc-protos'),
+jest.mock('@mjuz/grpc-protos', () => ({
+	...jest.requireActual('@mjuz/grpc-protos'),
 }));
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const mjusProtos = require('@mjus/grpc-protos');
+const mjuzProtos = require('@mjuz/grpc-protos');
 
 // Fixes error in hareactive testing
 Behavior.of('');
@@ -77,7 +77,7 @@ describe('offers runtime', () => {
 
 			const deploymentClientMock = mock<DeploymentClient>();
 			const deploymentClientSpy = jest
-				.spyOn(mjusProtos, 'DeploymentClient')
+				.spyOn(mjuzProtos, 'DeploymentClient')
 				.mockReturnValue(instance(deploymentClientMock));
 			const pred = ([t1, t2, upsert, remove]: Arbs) => {
 				deploymentClientSpy.mockClear();

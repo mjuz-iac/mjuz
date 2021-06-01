@@ -1,5 +1,5 @@
 {
-  "name": "@mjus/core/resources",
+  "name": "@mjuz/core/resources",
   "private": true,
   "main": "../dist/src/resources/index.js",
   "types": "../dist/src/resources/index.d.ts"

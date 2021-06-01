@@ -6,7 +6,7 @@ import {
 	runDeployment,
 	sigint,
 	sigterm,
-} from '@mjus/core';
+} from '@mjuz/core';
 import { at, changes, combine, sinkBehavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 import { PulumiFn } from '@pulumi/pulumi/automation';

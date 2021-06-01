@@ -6,7 +6,7 @@ import {
 	runDeployment,
 	sigint,
 	sigterm,
-} from '@mjus/core';
+} from '@mjuz/core';
 import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 

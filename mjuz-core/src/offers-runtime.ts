@@ -16,7 +16,7 @@ import {
 } from '@funkia/hareactive';
 import { call, callP, catchE, IO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
-import * as rpc from '@mjus/grpc-protos';
+import * as rpc from '@mjuz/grpc-protos';
 import { Offer, Remote, RemoteOffer, ResourcesService, Wish } from './resources-service';
 import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';

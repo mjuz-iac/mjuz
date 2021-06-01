@@ -4,8 +4,8 @@ Decentralized Deployments IaC using Pulumi and TypeScript.
 
 ## Structure
 
-`├── mjus-core` µs core SDK and runtime\
-`├── mjus-grpc-protos` µs GRPC prototype definitions\
+`├── mjuz-core` µs core SDK and runtime\
+`├── mjuz-grpc-protos` µs GRPC prototype definitions\
 `├── patches` manual patches applied to dependencies (mostly quick-fixes)\
 `├── teastore` TeaStore Case Study\
 `└── webpage` Webpage Case Study
@@ -52,8 +52,8 @@ It be removed once [PR6648](https://github.com/pulumi/pulumi/pull/6648) is in th
 ## GRPC fail in dynamic resource
 
 The Pulumi resource serialization breaks generated gRPC code.
-To solve this issue, the generated gRPC source is outsourced to `@mjus/grpc-protos`
+To solve this issue, the generated gRPC source is outsourced to `@mjuz/grpc-protos`
 (because Pulumi does not serialize external packages but loads them directly).
 However, Pulumi serializes external package, if it is not plainly installed to node_modules, but only symlinked.
-Thus, for development, `@mjus/grpc-protos` must be copied into `@mjus/core`'s dependencies and cannot only be linked.
+Thus, for development, `@mjuz/grpc-protos` must be copied into `@mjuz/core`'s dependencies and cannot only be linked.
 This is implemented in `npm install` in the repo root.

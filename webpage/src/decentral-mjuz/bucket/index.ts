@@ -6,8 +6,8 @@ import {
 	runDeployment,
 	sigint,
 	sigterm,
-} from '@mjus/core';
-import { Offer, RemoteConnection } from '@mjus/core/resources';
+} from '@mjuz/core';
+import { Offer, RemoteConnection } from '@mjuz/core/resources';
 import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
 

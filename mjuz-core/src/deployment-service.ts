@@ -2,7 +2,7 @@ import { sinkStream, Stream } from '@funkia/hareactive';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import * as grpc from '@grpc/grpc-js';
 import { sendUnaryData } from '@grpc/grpc-js/build/src/server-call';
-import * as rpc from '@mjus/grpc-protos';
+import * as rpc from '@mjuz/grpc-protos';
 import { startService } from './service-utils';
 import { Typify } from './type-utils';
 import { Logger } from 'pino';

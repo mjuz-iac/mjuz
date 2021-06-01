@@ -1,5 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
-import * as rpc from '@mjus/grpc-protos';
+import * as rpc from '@mjuz/grpc-protos';
 import { DeploymentService, startDeploymentService } from '../src';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { Logger } from 'pino';

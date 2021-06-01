@@ -17,7 +17,7 @@ Everything in a single stack managed by µs. Page content is reactively updated 
 Start with empty Pulumi config passphrase and pretty printed logging.
 
 ```
-cd src/central-mjus
+cd src/central-mjuz
 PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
@@ -70,14 +70,14 @@ Start with empty Pulumi config passphrase and pretty printed logging.
 #### Bucket
 
 ```
-cd src/decentral-mjus/bucket
+cd src/decentral-mjuz/bucket
 PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
 #### Content
 
 ```
-cd src/decentral-mjus/content
+cd src/decentral-mjuz/content
 PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
 ```
 
@@ -101,7 +101,7 @@ the bucket stack.
 Start with empty Pulumi config passphrase and pretty printed logging.
 
 ```
-cd src/decentral-mjus-stackref
+cd src/decentral-mjuz-stackref
 
 # Start bucket stack
 PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
