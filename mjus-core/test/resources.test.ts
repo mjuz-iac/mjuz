@@ -364,19 +364,23 @@ describe('resources', () => {
 						oldProps,
 						newProps,
 						offer,
-						{ isSatisfied: offer.offer !== undefined, offer: offer.offer },
+						{
+							isSatisfied: offer.offer !== undefined,
+							offer: offer.offer === undefined ? null : offer.offer,
+						},
 					]);
 				return fc.assert(fc.asyncProperty(arbs, pred));
 			});
 			test('offer state unknown and deployed', () => {
-				const arbs = fc
-					.tuple(propsArb, propsArb)
-					.map<PredArgs>(([oldProps, newProps]) => [
-						oldProps,
-						newProps,
-						{ isWithdrawn: false },
-						{ isSatisfied: oldProps.isSatisfied, offer: oldProps.offer },
-					]);
+				const arbs = fc.tuple(propsArb, propsArb).map<PredArgs>(([oldProps, newProps]) => [
+					oldProps,
+					newProps,
+					{ isWithdrawn: false },
+					{
+						isSatisfied: oldProps.isSatisfied,
+						offer: oldProps.offer === undefined ? null : oldProps.offer,
+					},
+				]);
 				return fc.assert(fc.asyncProperty(arbs, pred));
 			});
 			test('offer state unknown and not deployed', () => {
@@ -386,7 +390,7 @@ describe('resources', () => {
 						oldProps,
 						newProps,
 						{ isWithdrawn: false },
-						{ isSatisfied: false, offer: undefined },
+						{ isSatisfied: false, offer: null },
 					]);
 				return fc.assert(fc.asyncProperty(arbs, pred));
 			});

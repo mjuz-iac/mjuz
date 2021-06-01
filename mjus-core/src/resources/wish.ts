@@ -8,7 +8,7 @@ export type WishProps<O> = {
 	targetId: string;
 	offerName: string;
 	isSatisfied: boolean;
-	offer?: O; // undefined when isSatisfied is false, otherwise not undefined
+	offer: O | null; // null when isSatisfied is false
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,6 +33,7 @@ export class WishProvider<O> implements dynamic.ResourceProvider {
 			targetId: newProps.targetId,
 			offerName: newProps.offerName,
 			isSatisfied: false,
+			offer: null,
 		};
 		if (isWishProps(oldProps) && oldProps.isSatisfied) {
 			props.isSatisfied = true;
@@ -45,7 +46,7 @@ export class WishProvider<O> implements dynamic.ResourceProvider {
 			props.offer = currentOffer.offer;
 		} else if (currentOffer.isWithdrawn) {
 			props.isSatisfied = false;
-			delete props.offer;
+			props.offer = null;
 		}
 		return { inputs: props };
 	}
@@ -117,7 +118,7 @@ export class Wish<O> extends dynamic.Resource implements WishOutputs<O> {
 			targetId,
 			offerName,
 			isSatisfied: false,
-			offer: undefined,
+			offer: null,
 		};
 		super(new WishProvider<O>(), `wish$${name}`, props, opts);
 	}

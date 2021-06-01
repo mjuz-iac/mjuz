@@ -221,7 +221,7 @@ describe('resources', () => {
 			// unsatisfied
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offer":null,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(1, 0);
 
@@ -229,7 +229,7 @@ describe('resources', () => {
 			offer.isWithdrawn = true;
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offer":null,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(2, 0);
 
@@ -245,7 +245,7 @@ describe('resources', () => {
 			delete offer.offer;
 			await expectOutput(
 				program,
-				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
+				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offer":null,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
 			expectActions(6, 2);
 		});
