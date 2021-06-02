@@ -75,7 +75,7 @@ const sendHeartbeats = (
 ): Stream<IO<Remotes>> => {
 	const heartbeat = ([remote, client]: [Remote, rpc.DeploymentClient]) =>
 		new Promise<string | undefined>((resolve) => {
-			logger.trace(`Sending heartbeat to remote ${remote.id}`);
+			logger.trace(`Sending heartbeat to remote '${remote.id}'`);
 			client.heartbeat(new Empty(), (err) => resolve(err ? undefined : remote.id));
 		});
 	const connectedRemotes = (remotes: Remotes, remoteIdsConnected: (string | undefined)[]) =>
@@ -130,7 +130,10 @@ const accumOutboundOffers = (
 			const offerId = `${offer.beneficiaryId}:${offer.name}`;
 
 			if (change === 'upsert') update[offerId] = offer;
-			else if (!(offerId in update)) logger.warn(`Withdrawing unknown offer ${offerId}`);
+			else if (!(offerId in update))
+				logger.warn(
+					`Withdrawing unknown offer '${offer.name}' to remote '${offer.beneficiaryId}'`
+				);
 			else delete update[offerId];
 
 			return update;
@@ -156,6 +159,7 @@ const accumOutboundOffers = (
  * @param offerLocked
  * @param offerWithdrawal
  * @param offerReleased
+ * @param logger
  */
 const accumInboundOffers = (
 	offerUpdate: Stream<DeploymentOffer<unknown>>,
@@ -202,7 +206,7 @@ const accumInboundOffers = (
 						if (update[offerId].withdrawn) delete update[offerId];
 						else
 							logger.warn(
-								`Released offer ${offerId} that is not withdrawn (anymore?)`
+								`Released offer '${offer.name}' from remote '${offer.origin}' that is not withdrawn (anymore?)`
 							);
 					else logger.warn(`Released unknown offer ${offerId}`);
 					break;
@@ -256,7 +260,7 @@ const directOfferForward = (
 			sendOfferOp.map((sentOffer) =>
 				logger.debug(
 					sentOffer,
-					`Directly forwarded offer ${sentOffer.name} to ${sentOffer.beneficiaryId}`
+					`Directly forwarded offer '${sentOffer.name}' to remote '${sentOffer.beneficiaryId}'`
 				)
 			)
 		)
@@ -285,7 +289,7 @@ export const resendOffersOnConnect = (
 								if (err)
 									logger.warn(
 										err,
-										`Failed to resend offer ${offer.name} to ${offer.beneficiaryId}`
+										`Failed to resend offer '${offer.name}' to remote '${offer.beneficiaryId}'`
 									);
 							}
 						);

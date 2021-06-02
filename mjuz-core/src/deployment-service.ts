@@ -28,7 +28,10 @@ const deploymentService = (
 			cb: sendUnaryData<Empty>
 		): void {
 			const offer = call.request as rpc.DeploymentOffer;
-			logger.info(offer, 'Received offer');
+			logger.info(
+				offer,
+				`Received offer '${offer.getName()}' from remote '${offer.getOrigin()}`
+			);
 			cb(null, new Empty());
 			offers.push(toDeploymentOffer(offer));
 		}
@@ -38,7 +41,10 @@ const deploymentService = (
 			cb: sendUnaryData<Empty>
 		): void {
 			const offer = call.request as rpc.DeploymentOffer;
-			logger.info(offer, 'Releasing offer');
+			logger.info(
+				offer,
+				`Releasing offer '${offer.getName()}' from remote '${offer.getOrigin()}'`
+			);
 			releaseOffers.push([toDeploymentOffer(offer), () => cb(null, new Empty())]);
 		}
 

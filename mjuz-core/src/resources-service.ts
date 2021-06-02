@@ -103,7 +103,7 @@ const resourceService = (
 			cb: sendUnaryData<Empty>
 		): void {
 			const remote = call.request as rpc.Remote;
-			logger.info(remote, 'Remote created');
+			logger.info(remote, `Remote '${remote.getId()}' created`);
 			remoteUpdated.push(fromRpcRemote(remote));
 			cb(null, new Empty());
 		}
@@ -113,7 +113,7 @@ const resourceService = (
 			cb: sendUnaryData<Empty>
 		): void {
 			const remote = call.request as rpc.Remote;
-			logger.info(remote, 'Remote refreshed');
+			logger.info(remote, `Remote '${remote.getId()}' refreshed`);
 			remoteRefreshed.push(fromRpcRemote(remote));
 			cb(null, new Empty());
 		}
@@ -123,28 +123,37 @@ const resourceService = (
 			cb: sendUnaryData<Empty>
 		): void {
 			const remote = call.request as rpc.Remote;
-			logger.info(remote, 'Remote deleted');
+			logger.info(remote, `Remote '${remote.getId()}' deleted`);
 			remoteDeleted.push(fromRpcRemote(remote));
 			cb(null, new Empty());
 		}
 
 		updateOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
-			logger.info(offer, 'Offer updated');
+			logger.info(
+				offer,
+				`Offer '${offer.getName()}' to remote '${offer.getBeneficiaryid()}' updated`
+			);
 			offerUpdated.push(fromRpcOffer(offer));
 			cb(null, new Empty());
 		}
 
 		refreshOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
-			logger.info(offer, 'Offer refreshed');
+			logger.info(
+				offer,
+				`Offer '${offer.getName()}' to remote '${offer.getBeneficiaryid()}' refreshed`
+			);
 			offerRefreshed.push(fromRpcOffer(offer));
 			cb(null, new Empty());
 		}
 
 		deleteOffer(call: grpc.ServerUnaryCall<rpc.Offer, Empty>, cb: sendUnaryData<Empty>): void {
 			const offer = call.request as rpc.Offer;
-			logger.info(offer, 'Withdrawing offer');
+			logger.info(
+				offer,
+				`Withdrawing offer '${offer.getName()}' to remote '${offer.getBeneficiaryid()}'`
+			);
 			offerWithdrawn.push([fromRpcOffer(offer), (error) => cb(error, new Empty())]);
 		}
 
@@ -153,13 +162,19 @@ const resourceService = (
 			cb: sendUnaryData<rpc.RemoteOffer>
 		): void {
 			const wish = call.request as rpc.Wish;
-			logger.info(wish, 'Polling wish for remote offer');
+			logger.info(
+				wish,
+				`Polling wish for offer '${wish.getName()}' to remote '${wish.getTargetid()}'`
+			);
 			wishPolled.push([fromRpcWish(wish), (err, ro) => cb(err, toRpcRemoteOffer(ro))]);
 		}
 
 		wishDeleted(call: grpc.ServerUnaryCall<rpc.Wish, Empty>, cb: sendUnaryData<Empty>): void {
 			const wish = call.request as rpc.Wish;
-			logger.info(wish, 'Wish deleted');
+			logger.info(
+				wish,
+				`Wish  for offer '${wish.getName()}' to remote '${wish.getTargetid()}' deleted`
+			);
 			wishDeleted.push(fromRpcWish(wish));
 			cb(null, new Empty());
 		}
