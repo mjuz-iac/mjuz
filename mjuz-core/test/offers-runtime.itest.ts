@@ -1,5 +1,4 @@
 import { never, sinkStream, SinkStream } from '@funkia/hareactive';
-import * as rpc from '@mjuz/grpc-protos';
 import { Logger } from 'pino';
 import { instance, mock } from 'ts-mockito';
 import {
@@ -186,19 +185,21 @@ describe('offers runtime', () => {
 		);
 	});
 
-	test.skip('poll unsatisfied wish', async () => {
+	test('poll unsatisfied wish', async () => {
 		await new Promise<void>((resolve) =>
 			resourcesService.wishPolled.push([
 				testWish,
-				(err, wish) => {
-					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
+				(err, remoteOffer) => {
+					expect(remoteOffer).toStrictEqual({
+						isWithdrawn: false,
+					});
 					resolve();
 				},
 			])
 		);
 	});
 
-	test.skip('poll withdrawn wish', async () => {
+	test('poll withdrawn wish', async () => {
 		// Create and lock offer
 		resourcesService.wishPolled.push([testWish, noCb]);
 		// Withdrawal
@@ -206,15 +207,17 @@ describe('offers runtime', () => {
 		await new Promise<void>((resolve) =>
 			resourcesService.wishPolled.push([
 				testWish,
-				(err, wish) => {
-					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
+				(err, remoteOffer) => {
+					expect(remoteOffer).toStrictEqual({
+						isWithdrawn: true,
+					});
 					resolve();
 				},
 			])
 		);
 	});
 
-	test.skip('poll wish of released offer', async () => {
+	test('poll wish of released offer', async () => {
 		// Create and lock offer
 		resourcesService.wishPolled.push([testWish, noCb]);
 		// Withdrawal
@@ -224,8 +227,10 @@ describe('offers runtime', () => {
 		await new Promise<void>((resolve) =>
 			resourcesService.wishPolled.push([
 				testWish,
-				(err, wish) => {
-					expect(wish).toEqual(new rpc.Wish().setTargetid('remote').setName('test'));
+				(err, remoteOffer) => {
+					expect(remoteOffer).toStrictEqual({
+						isWithdrawn: false,
+					});
 					resolve();
 				},
 			])
