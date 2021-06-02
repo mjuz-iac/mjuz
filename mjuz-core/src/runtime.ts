@@ -1,15 +1,14 @@
 import { IO } from '@funkia/io';
 import {
+	accum,
 	Behavior,
-	flatFutures,
 	Future,
-	nextOccurrenceFrom,
 	performStream,
 	runNow,
-	sample,
 	sinkFuture,
 	Stream,
 	toPromise,
+	when,
 } from '@funkia/hareactive';
 import {
 	Action,
@@ -102,10 +101,11 @@ export const runDeployment = <S>(
 			nextAction(offersRuntime.inboundOfferUpdates),
 			logger.child({ c: 'reaction loop' })
 		);
-		const stacks = runNow(performStream(stackActions));
-		runNow(flatFutures(stacks).map(nextOccurrenceFrom).flatMap(sample)).subscribe(() =>
-			initialized.resolve()
-		);
+		runNow(
+			performStream(stackActions)
+				.flatMap((actions) => accum(() => true, false, actions))
+				.flatMap(when)
+		).subscribe(() => initialized.resolve());
 		const finalStack = await toPromise(completed);
 		await Promise.all([
 			resourcesService.stop(),
