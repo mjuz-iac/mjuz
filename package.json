@@ -4,6 +4,7 @@
   "scripts": {
     "build": "yarn workspaces foreach -p run build",
     "clean": "yarn workspaces foreach -p run clean",
+    "lint": "yarn workspaces foreach -p run lint",
     "install-protos": "yarn workspace @mjuz/grpc-protos prepublish && rm -r node_modules/@mjuz/grpc-protos && cp -r mjuz-grpc-protos node_modules/@mjuz/grpc-protos",
     "postinstall": "patch-package && yarn install-protos"
   },
