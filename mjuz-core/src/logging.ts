@@ -1,6 +1,10 @@
 import Pino, { Logger } from 'pino';
 
 const rootLogger = Pino({
+	prettyPrint: {
+		ignore: 'hostname',
+		hideObject: true,
+	},
 	level: 'debug',
 });
 

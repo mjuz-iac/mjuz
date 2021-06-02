@@ -14,11 +14,11 @@ Everything in a single stack managed by µs. Page content is reactively updated 
 
 ### Deploy
 
-Start with empty Pulumi config passphrase and pretty printed logging.
+Start with empty Pulumi config passphrase.
 
 ```
 cd src/central-mjuz
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts
 ```
 
 ### Terminate
@@ -65,20 +65,20 @@ wish. The deployment order coordination is automated, the stacks can be safely d
 
 ### Deploy
 
-Start with empty Pulumi config passphrase and pretty printed logging.
+Start with empty Pulumi config passphrase.
 
 #### Bucket
 
 ```
 cd src/decentral-mjuz/bucket
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts
 ```
 
 #### Content
 
 ```
 cd src/decentral-mjuz/content
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts
 ```
 
 ### Terminate
@@ -98,16 +98,16 @@ the bucket stack.
 
 ### Deploy
 
-Start with empty Pulumi config passphrase and pretty printed logging.
+Start with empty Pulumi config passphrase.
 
 ```
 cd src/decentral-mjuz-stackref
 
 # Start bucket stack
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts
 
 # Start content stack (in parallel to the bucket, e.g., in another terminal)
-PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -H
+PULUMI_CONFIG_PASSPHRASE= ts-node index.ts
 ```
 
 ### Terminate

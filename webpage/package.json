@@ -42,6 +42,7 @@
     "@mjuz/core": "0.0.0",
     "@pulumi/aws": "4.6.0",
     "@pulumi/pulumi": "3.2.1",
-    "pino": "6.11.3"
+    "pino": "6.11.3",
+    "pino-pretty": "5.0.2"
   }
 }
