@@ -17,6 +17,7 @@ export const offerArb: Arbitrary<Offer<unknown>> = fc.record({
 export const wishArb: Arbitrary<Wish<unknown>> = fc.record({
 	targetId: fc.string(),
 	name: fc.string(),
+	isDeployed: fc.boolean(),
 });
 
 export const remoteOfferArb: Arbitrary<RemoteOffer<unknown>> = fc

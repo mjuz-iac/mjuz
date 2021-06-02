@@ -42,6 +42,7 @@ message Offer {
 message Wish {
 	string name = 1;
 	string targetId = 2;
+	bool isDeployed = 3;
 }
 
 message RemoteOffer {

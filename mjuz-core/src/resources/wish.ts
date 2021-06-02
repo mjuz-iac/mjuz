@@ -7,7 +7,7 @@ import { getWish, RemoteOffer, Wish as RsWish, wishDeleted } from '../resources-
 export type WishProps<O> = {
 	targetId: string;
 	offerName: string;
-	isSatisfied: boolean;
+	isSatisfied: boolean; // deployed, if true (synonym: isDeployed)
 	offer: O | null; // null when isSatisfied is false
 };
 
@@ -22,6 +22,7 @@ const toRsWish = <O>(props: WishProps<O>): RsWish<O> => {
 	return {
 		targetId: props.targetId,
 		name: props.offerName,
+		isDeployed: props.isSatisfied,
 	};
 };
 export class WishProvider<O> implements dynamic.ResourceProvider {
@@ -40,7 +41,7 @@ export class WishProvider<O> implements dynamic.ResourceProvider {
 			props.offer = oldProps.offer as O;
 		}
 
-		const currentOffer: RemoteOffer<O> = await getWish(toRsWish(newProps));
+		const currentOffer: RemoteOffer<O> = await getWish(toRsWish(props));
 		if (currentOffer.offer !== undefined) {
 			props.isSatisfied = true;
 			props.offer = currentOffer.offer;
@@ -87,7 +88,7 @@ export class WishProvider<O> implements dynamic.ResourceProvider {
 	}
 
 	async delete(id: ID, props: WishProps<O>): Promise<void> {
-		await wishDeleted(toRsWish(props));
+		if (props.isSatisfied) await wishDeleted(toRsWish(props));
 	}
 }
 

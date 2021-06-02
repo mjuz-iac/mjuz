@@ -31,15 +31,16 @@ export const toRpcOffer = <O>(offer: Offer<O>): rpc.Offer => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type Wish<O> = { name: string; targetId: string };
+export type Wish<O> = { name: string; targetId: string; isDeployed: boolean };
 export const fromRpcWish = <O>(wish: rpc.Wish): Wish<O> => {
 	return {
 		targetId: wish.getTargetid(),
 		name: wish.getName(),
+		isDeployed: wish.getIsdeployed(),
 	};
 };
 export const toRpcWish = <O>(wish: Wish<O>): rpc.Wish =>
-	new rpc.Wish().setTargetid(wish.targetId).setName(wish.name);
+	new rpc.Wish().setTargetid(wish.targetId).setName(wish.name).setIsdeployed(wish.isDeployed);
 
 // Is satisfied if offer not undefined. If satisfied, isWithdrawn must be false.
 export type RemoteOffer<O> = { isWithdrawn: boolean; offer?: O };

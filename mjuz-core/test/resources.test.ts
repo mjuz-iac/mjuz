@@ -343,6 +343,12 @@ describe('resources', () => {
 						expect(wish).toStrictEqual({
 							targetId: newProps.targetId,
 							name: newProps.offerName,
+							isDeployed:
+								typeof oldProps === 'object' &&
+								oldProps !== null &&
+								'isSatisfied' in oldProps
+									? (oldProps as WishProps<unknown>).isSatisfied
+									: false,
 						} as resourcesService.Wish<unknown>);
 						return offer;
 					});
@@ -489,10 +495,11 @@ describe('resources', () => {
 						expect(wish).toStrictEqual({
 							targetId: props.targetId,
 							name: props.offerName,
+							isDeployed: true,
 						} as resourcesService.Wish<unknown>);
 					});
 				await new WishProvider().delete(id, props);
-				expect(wishDeletedSpy).toHaveBeenCalledTimes(1);
+				expect(wishDeletedSpy).toHaveBeenCalledTimes(props.isSatisfied ? 1 : 0);
 				wishDeletedSpy.mockRestore();
 			};
 			return fc.assert(fc.asyncProperty(fc.string(), propsArb, pred));

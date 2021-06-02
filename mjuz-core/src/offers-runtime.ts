@@ -20,7 +20,7 @@ import { call, callP, catchE, IO, withEffects } from '@funkia/io';
 import * as grpc from '@grpc/grpc-js';
 import * as rpc from '@mjuz/grpc-protos';
 import { Offer, Remote, RemoteOffer, ResourcesService, Wish } from './resources-service';
-import { JavaScriptValue, Value } from 'google-protobuf/google/protobuf/struct_pb';
+import { Value } from 'google-protobuf/google/protobuf/struct_pb';
 import { DeploymentOffer, DeploymentService } from './deployment-service';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { Logger } from 'pino';
@@ -156,21 +156,22 @@ const accumOutboundOffers = (
  * deployed.
  *
  * @param offerUpdate
- * @param offerLocked
+ * @param deployedOfferPolled
+ * @param undeployedOfferPolled
  * @param offerWithdrawal
  * @param offerReleased
  * @param logger
  */
 const accumInboundOffers = (
 	offerUpdate: Stream<DeploymentOffer<unknown>>,
-	offerLocked: Stream<DeploymentOffer<unknown>>,
+	deployedOfferPolled: Stream<DeploymentOffer<unknown>>,
+	undeployedOfferPolled: Stream<DeploymentOffer<unknown>>,
 	offerWithdrawal: Stream<DeploymentOffer<unknown>>,
 	offerReleased: Stream<DeploymentOffer<unknown>>,
 	logger: Logger
-): Behavior<Behavior<InboundOffers>> =>
-	accumFrom<InboundOfferEvent<unknown>, InboundOffers>(
-		(event, offers) => {
-			const [change, offer] = event;
+): Behavior<Behavior<InOffers>> =>
+	accumFrom<InOfferEvt<unknown>, InOffers>(
+		([change, offer], offers) => {
 			const update = { ...offers };
 			const offerId = `${offer.origin}:${offer.name}`;
 
@@ -181,25 +182,37 @@ const accumInboundOffers = (
 						update[offerId].offer = offer;
 					} else {
 						update[offerId] = {
-							locked: false,
+							deployed: false,
 							withdrawn: false,
 							offer: offer,
 						};
 					}
 					break;
-				case 'lock':
-					if (offerId in update) update[offerId].locked = true;
+				case 'polledDeployed':
+					if (offerId in update) update[offerId].deployed = true;
 					// Case: after restart the offer was not renewed from the offering side, but the corresponding wish is already deployed
 					else
 						update[offerId] = {
-							locked: true,
+							deployed: true,
 							withdrawn: false,
 						};
 					break;
+				case 'polledUndeployed':
+					// Set deployed, if it is going to be deployed after this poll
+					if (
+						offerId in update &&
+						!update[offerId].withdrawn &&
+						update[offerId].offer?.offer !== undefined
+					)
+						update[offerId].deployed = true;
+					break;
 				case 'withdraw':
-					if (offerId in update)
-						if (update[offerId].locked) update[offerId].withdrawn = true;
-						else delete update[offerId];
+					if (offerId in update) update[offerId].withdrawn = true;
+					else
+						update[offerId] = {
+							deployed: false,
+							withdrawn: true,
+						};
 					break;
 				case 'release':
 					if (offerId in update)
@@ -211,20 +224,28 @@ const accumInboundOffers = (
 					else logger.warn(`Released unknown offer ${offerId}`);
 					break;
 			}
+			logger.trace(
+				`Inbound offer '${offer.name}' from remote '${offer.origin}' after ${change}: ` +
+					`deployed ${update[offerId]?.deployed}, withdrawn ${update[offerId]?.withdrawn}`
+			);
 			return update;
 		},
 		{},
 		combine(
-			offerUpdate.map<InboundOfferEvent<unknown>>((offer) => ['upsert', offer]),
-			offerLocked.map<InboundOfferEvent<unknown>>((offer) => ['lock', offer]),
-			offerWithdrawal.map<InboundOfferEvent<unknown>>((offer) => ['withdraw', offer]),
-			offerReleased.map<InboundOfferEvent<unknown>>((offer) => ['release', offer])
+			offerUpdate.map<InOfferEvt<unknown>>((offer) => ['upsert', offer]),
+			deployedOfferPolled.map<InOfferEvt<unknown>>((offer) => ['polledDeployed', offer]),
+			undeployedOfferPolled.map<InOfferEvt<unknown>>((offer) => ['polledUndeployed', offer]),
+			offerWithdrawal.map<InOfferEvt<unknown>>((offer) => ['withdraw', offer]),
+			offerReleased.map<InOfferEvt<unknown>>((offer) => ['release', offer])
 		)
 	);
-type InboundOfferEvent<O> = ['upsert' | 'lock' | 'withdraw' | 'release', DeploymentOffer<O>];
-type InboundOffers = Record<string, InboundOffer<unknown>>;
-type InboundOffer<O> = {
-	locked: boolean;
+type InOfferEvt<O> = [
+	'upsert' | 'polledDeployed' | 'polledUndeployed' | 'withdraw' | 'release',
+	DeploymentOffer<O>
+];
+type InOffers = Record<string, InOffer<unknown>>;
+type InOffer<O> = {
+	deployed: boolean;
 	withdrawn: boolean;
 	offer?: DeploymentOffer<O>;
 };
@@ -355,16 +376,19 @@ const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 
 const offerRelease = (
 	offerWithdrawals: Stream<[DeploymentOffer<unknown>, () => void]>,
-	inboundOffers: Behavior<InboundOffers>
+	inboundOffers: Behavior<InOffers>,
+	offersStateInitialized: Future<void>
 ): Behavior<Stream<IO<void>>> =>
 	flatFuturesFrom(
-		offerWithdrawals.map((withdrawal) => {
-			const [offer, cb] = withdrawal;
+		offerWithdrawals.map(([offer, cb]) => {
 			const offerId = `${offer.origin}:${offer.name}`;
 			const offerReleased: Behavior<boolean> = inboundOffers.map(
-				(offers) => !(offerId in offers) || !offers[offerId].locked
+				(offers) => !(offerId in offers) || !offers[offerId].deployed
 			);
-			return runNow(when(offerReleased)).map(withEffects(cb));
+
+			return offersStateInitialized
+				.flatMap(() => runNow(when(offerReleased)))
+				.map(withEffects(cb));
 		})
 	);
 
@@ -372,7 +396,7 @@ const wishPollAnswer = (
 	polls: Stream<
 		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
 	>,
-	offers: Behavior<InboundOffers>
+	offers: Behavior<InOffers>
 ): Stream<IO<void>> =>
 	snapshotWith(
 		([wish, cb], offers) => {
@@ -387,35 +411,6 @@ const wishPollAnswer = (
 		},
 		offers,
 		polls
-	);
-
-// Do not answer with unsatisfied offers but wait
-// Not the intended semantics
-const delayUntilSatisfiedWishPollAnswer = (
-	polls: Stream<
-		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void]
-	>,
-	offers: Behavior<InboundOffers>
-): Stream<IO<void>> =>
-	runNow(
-		sample(
-			flatFuturesFrom(
-				polls.map((poll) => {
-					const [wish, cb] = poll;
-					const offerId = `${wish.targetId}:${wish.name}`;
-					const offerPresent: Behavior<boolean> = offers.map(
-						(offers) => offerId in offers // && !offers[offerId].withdrawn
-					);
-					/*  eslint-disable prettier/prettier */
-					return runNow(when(offerPresent)).map(() => call(() =>
-						cb(null, { isWithdrawn: false, offer: runNow(
-							sample(offers.map((offers) => (offers[offerId].offer?.offer || null) as JavaScriptValue))
-						)}))
-					);
-					/* eslint-enable prettier/prettier */
-				})
-			)
-		)
 	);
 
 export type OffersRuntime = {
@@ -454,11 +449,16 @@ export const startOffersRuntime = async (
 			)
 		)
 	);
-	const inboundOffers: Behavior<InboundOffers> = runNow(
+	const inboundOffers: Behavior<InOffers> = runNow(
 		sample(
 			accumInboundOffers(
 				deployment.offerUpdated,
-				resources.wishPolled.map(([w]) => toDeploymentOffer(w)),
+				resources.wishPolled
+					.filter(([w]) => w.isDeployed)
+					.map(([w]) => toDeploymentOffer(w)),
+				resources.wishPolled
+					.filter(([w]) => !w.isDeployed)
+					.map(([w]) => toDeploymentOffer(w)),
 				deployment.offerWithdrawn.map(([o]) => o),
 				resources.wishDeleted.map(toDeploymentOffer),
 				logger
@@ -485,7 +485,9 @@ export const startOffersRuntime = async (
 	sendOfferWithdrawals.activate(tick());
 	// Directly forward offer releases to withdrawing remote
 	const sendOfferRelease = runNow(
-		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
+		sample(offerRelease(deployment.offerWithdrawn, inboundOffers, initialized)).flatMap(
+			performStream
+		)
 	);
 	// Handle wish polls of own deployment
 	const answerWishPolls = runNow(

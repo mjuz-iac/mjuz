@@ -1,4 +1,4 @@
-import { never, sinkStream, SinkStream } from '@funkia/hareactive';
+import { Future, sinkStream, SinkStream } from '@funkia/hareactive';
 import { Logger } from 'pino';
 import { instance, mock } from 'ts-mockito';
 import {
@@ -63,7 +63,7 @@ describe('offers runtime', () => {
 		offersRuntime = await startOffersRuntime(
 			deploymentService,
 			resourcesService,
-			never,
+			Future.of(undefined),
 			'test-deployment',
 			1,
 			instance(mock<Logger>())
@@ -160,7 +160,7 @@ describe('offers runtime', () => {
 		await threeUpdates;
 	});
 
-	const testWish: Wish<unknown> = { targetId: 'remote', name: 'test' };
+	const testWish: Wish<unknown> = { targetId: 'remote', name: 'test', isDeployed: false };
 	const testDeploymentOffer: DeploymentOffer<unknown> = { origin: 'remote', name: 'test' };
 	const noCb: () => void = () => {
 		// Intended to be empty
@@ -250,7 +250,7 @@ describe('offers runtime', () => {
 		);
 	});
 
-	test('release locked offer', async () => {
+	test('release deployed offer', async () => {
 		deploymentService.offerUpdated.push({
 			...testDeploymentOffer,
 			offer: 'val',

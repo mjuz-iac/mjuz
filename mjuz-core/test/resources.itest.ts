@@ -239,7 +239,7 @@ describe('resources', () => {
 				program,
 				'{"w":{"value":{"id":"remote:testWish","isSatisfied":true,"offer":{"a":1},"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
-			expectActions(4, 1);
+			expectActions(4, 0);
 
 			// unsatisfied
 			delete offer.offer;
@@ -247,7 +247,7 @@ describe('resources', () => {
 				program,
 				'{"w":{"value":{"id":"remote:testWish","isSatisfied":false,"offer":null,"offerName":"testWish","targetId":"remote","urn":"urn:pulumi:testStack::testProject::pulumi-nodejs:dynamic:Resource::wish$remote:testWish"},"secret":false}}'
 			);
-			expectActions(6, 2);
+			expectActions(6, 1);
 		});
 	});
 });
