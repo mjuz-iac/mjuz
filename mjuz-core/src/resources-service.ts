@@ -171,9 +171,10 @@ const resourceService = (
 	const offerUpdated = sinkStream<Offer<unknown>>();
 	const offerRefreshed = sinkStream<Offer<unknown>>();
 	const offerWithdrawn = sinkStream<[Offer<unknown>, (error: Error | null) => void]>();
-	const wishPolled = sinkStream<
-		[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
-	>();
+	const wishPolled =
+		sinkStream<
+			[Wish<unknown>, (error: Error | null, remoteOffer: RemoteOffer<unknown>) => void]
+		>();
 	const wishDeleted = sinkStream<Wish<unknown>>();
 
 	return {

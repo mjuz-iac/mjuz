@@ -49,12 +49,13 @@ describe('offers runtime', () => {
 			offerRefreshed: sinkStream<Offer<unknown>>(),
 			offerUpdated: sinkStream<Offer<unknown>>(),
 			offerWithdrawn: sinkStream<[Offer<unknown>, (error: Error | null) => void]>(),
-			wishPolled: sinkStream<
-				[
-					Wish<unknown>,
-					(error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void
-				]
-			>(),
+			wishPolled:
+				sinkStream<
+					[
+						Wish<unknown>,
+						(error: Error | null, remoteOffer: RemoteOffer<unknown> | null) => void
+					]
+				>(),
 			wishDeleted: sinkStream<Wish<unknown>>(),
 			stop: async () => {
 				// Intended to be empty

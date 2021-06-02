@@ -21,13 +21,9 @@ describe('runtime', () => {
 		remainingActions = ['deploy', 'deploy', 'terminate', 'deploy'];
 
 		const loggerMock = mock<Logger>();
-		[
-			'resources service',
-			'deployment service',
-			'offers runtime',
-			'reaction loop',
-		].forEach((name) =>
-			when(loggerMock.child(deepEqual({ c: name }))).thenReturn(instance(loggerMock))
+		['resources service', 'deployment service', 'offers runtime', 'reaction loop'].forEach(
+			(name) =>
+				when(loggerMock.child(deepEqual({ c: name }))).thenReturn(instance(loggerMock))
 		);
 
 		return expect(

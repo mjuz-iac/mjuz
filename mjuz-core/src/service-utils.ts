@@ -21,12 +21,10 @@ export const startService = <D extends grpc.ServiceDefinition>(
 				server.start();
 				logger.info(`${name} service started on port ${port}`);
 
-				resolve(
-					async (): Promise<void> => {
-						logger.info(`Shutting down ${name}`);
-						server.forceShutdown();
-					}
-				);
+				resolve(async (): Promise<void> => {
+					logger.info(`Shutting down ${name}`);
+					server.forceShutdown();
+				});
 			}
 		);
 	});

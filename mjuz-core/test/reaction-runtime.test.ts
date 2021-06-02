@@ -36,11 +36,8 @@ describe('reaction runtime', () => {
 		): Arbitrary<Arbs> =>
 			fc.tuple(fc.integer(), fc.nat()).chain(([t1, deltaT2]) => {
 				const t2 = t1 + deltaT2 + 0.1;
-				const [
-					changesConstraints,
-					terminateTriggerConstraints,
-					destroyTriggerConstraints,
-				] = constraints(t1, t2);
+				const [changesConstraints, terminateTriggerConstraints, destroyTriggerConstraints] =
+					constraints(t1, t2);
 				return fc.tuple(
 					fc.constant(t1), // t1
 					fc.constant(t2), // t2
@@ -98,11 +95,13 @@ describe('reaction runtime', () => {
 			]);
 			const pred = ([t1, t2, changes, terminate, destroy]: Arbs) => {
 				const na = nextAction(changes, terminate, destroy);
-				const triggersChrono = ([
-					[destroy.model().time, 'destroy'],
-					[terminate.model().time, 'terminate'],
-					...Object.values(changes.model()).map((e) => [Number(e.time), 'deploy']),
-				] as [number, Action][]).sort((a, b) => a[0] - b[0]);
+				const triggersChrono = (
+					[
+						[destroy.model().time, 'destroy'],
+						[terminate.model().time, 'terminate'],
+						...Object.values(changes.model()).map((e) => [Number(e.time), 'deploy']),
+					] as [number, Action][]
+				).sort((a, b) => a[0] - b[0]);
 				assertFutureEqual(testAt(t2, testAt(t1, na)), testFuture(...triggersChrono[0]));
 			};
 			fc.assert(fc.property(as, pred));

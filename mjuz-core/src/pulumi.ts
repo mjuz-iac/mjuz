@@ -87,16 +87,19 @@ export const destroy = (stack: Stack, logger: Logger): IO<Stack> =>
 					};
 				});
 
-export const operations = (program: Behavior<PulumiFn>, logger: Logger = newLogger('pulumi')) => (
-	action: Action
-): ((stack: Stack) => IO<Stack>) => {
-	const actionLogger = logger.child({ action: action, id: Math.floor(Math.random() * 10000) });
-	switch (action) {
-		case 'deploy':
-			return (stack: Stack) => deploy(stack, runNow(sample(program)), actionLogger);
-		case 'terminate':
-			return (stack: Stack) => IO.of(stack);
-		case 'destroy':
-			return (stack: Stack) => destroy(stack, actionLogger);
-	}
-};
+export const operations =
+	(program: Behavior<PulumiFn>, logger: Logger = newLogger('pulumi')) =>
+	(action: Action): ((stack: Stack) => IO<Stack>) => {
+		const actionLogger = logger.child({
+			action: action,
+			id: Math.floor(Math.random() * 10000),
+		});
+		switch (action) {
+			case 'deploy':
+				return (stack: Stack) => deploy(stack, runNow(sample(program)), actionLogger);
+			case 'terminate':
+				return (stack: Stack) => IO.of(stack);
+			case 'destroy':
+				return (stack: Stack) => destroy(stack, actionLogger);
+		}
+	};
