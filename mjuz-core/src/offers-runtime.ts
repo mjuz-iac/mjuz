@@ -7,11 +7,13 @@ import {
 	Future,
 	nextOccurrenceFrom,
 	performStream,
+	producerStream,
 	runNow,
 	sample,
 	snapshot,
 	snapshotWith,
 	Stream,
+	tick,
 	when,
 } from '@funkia/hareactive';
 import { call, callP, catchE, IO, withEffects } from '@funkia/io';
@@ -23,6 +25,7 @@ import { DeploymentOffer, DeploymentService } from './deployment-service';
 import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
 import { Logger } from 'pino';
 import { intervalStream } from './utils';
+import { Status } from '@grpc/grpc-js/build/src/constants';
 
 type Remotes = Record<string, [Remote, rpc.DeploymentClient]>;
 export const accumRemotes = (
@@ -297,38 +300,47 @@ const offerWithdrawalSend = (
 	remotes: Behavior<Remotes>,
 	connects: Stream<Remotes>,
 	withdrawals: Stream<[Offer<unknown>, (error: Error | null) => void]>,
-	deploymentName: string
-): Behavior<Stream<IO<void>>> =>
-	flatFuturesFrom(
-		snapshotWith<[Offer<unknown>, (error: Error | null) => void], Remotes, Future<IO<void>>>(
-			(withdrawal, remotes) => {
-				const [offer, cb] = withdrawal;
-				if (offer.beneficiaryId in remotes)
-					return Future.of(
-						call(() => {
-							remotes[offer.beneficiaryId][1].releaseOffer(
-								toRpcDeploymentOffer(offer, deploymentName),
-								// eslint-disable-next-line @typescript-eslint/no-empty-function
-								cb
-							);
-						})
+	deploymentName: string,
+	logger: Logger
+): Stream<Stream<Future<IO<void>>>> =>
+	withdrawals.map(([offer, cb]) => {
+		const withdrawalSends = producerStream<Future<IO<void>>>((push) => {
+			const withdrawRemote: Behavior<Future<IO<void>>> = remotes.flatMap((remotes) => {
+				const waitingMsg = `Waiting for remote '${offer.beneficiaryId}' to reconnect and release withdrawn offer '${offer.name}'`;
+				const logWaiting = () => push(Future.of(call(() => logger.info(waitingMsg))));
+
+				const withdraw = call(() => {
+					remotes[offer.beneficiaryId][1].releaseOffer(
+						toRpcDeploymentOffer(offer, deploymentName),
+						(err) => {
+							if (err?.code === Status.UNAVAILABLE) {
+								logWaiting();
+								push(runNow(sample(withdrawOnConnect)));
+							} else {
+								// Stop recursion
+								withdrawalSends.deactivate();
+								cb(err);
+							}
+						}
 					);
-				/*  eslint-disable prettier/prettier */ else
-				return runNow(sample(nextOccurrenceFrom(
-					connects.filter((remotes) => offer.beneficiaryId in remotes).map((remotes) => call(() => {
-						remotes[offer.beneficiaryId][1].releaseOffer(
-							toRpcDeploymentOffer(offer, deploymentName),
-							// eslint-disable-next-line @typescript-eslint/no-empty-function
-							cb
-						)
-					}))
-				)));
-			/*  eslint-enable prettier/prettier */
-			},
-			remotes,
-			withdrawals
-		)
-	);
+				});
+
+				const withdrawOnConnect = nextOccurrenceFrom(
+					connects.filter((remotes) => offer.beneficiaryId in remotes)
+				).map((f) => f.flatMap(() => runNow(sample(withdrawRemote))));
+
+				if (offer.beneficiaryId in remotes) return Behavior.of(Future.of(withdraw));
+				logWaiting();
+				return withdrawOnConnect;
+			});
+
+			push(runNow(sample(withdrawRemote)));
+			return () => {
+				// Intended to be empty
+			};
+		});
+		return withdrawalSends;
+	});
 
 const toDeploymentOffer = <O>(wish: Wish<O>): DeploymentOffer<O> => {
 	return {
@@ -459,11 +471,14 @@ export const startOffersRuntime = async (
 		performStream(resendOffersOnConnect(outboundOffers, remoteConnects, deploymentName, logger))
 	);
 	// Directly forward offer withdrawals to the beneficiary
-	const sendOfferWithdrawals = runNow(
-		sample(
-			offerWithdrawalSend(remotes, remoteConnects, resources.offerWithdrawn, deploymentName)
-		).flatMap(performStream)
-	);
+	const sendOfferWithdrawals = offerWithdrawalSend(
+		remotes,
+		remoteConnects,
+		resources.offerWithdrawn,
+		deploymentName,
+		logger
+	).map((substream) => runNow(performStream(runNow(flatFutures(substream)))));
+	sendOfferWithdrawals.activate(tick());
 	// Directly forward offer releases to withdrawing remote
 	const sendOfferRelease = runNow(
 		sample(offerRelease(deployment.offerWithdrawn, inboundOffers)).flatMap(performStream)
