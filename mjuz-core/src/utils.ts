@@ -7,6 +7,12 @@ export const sigint: () => Future<void> = () => {
 	return f;
 };
 
+export const sigquit: () => Future<void> = () => {
+	const f = sinkFuture<void>();
+	process.on('SIGQUIT', () => f.resolve());
+	return f;
+};
+
 export const sigterm: () => Future<void> = () => {
 	const f = sinkFuture<void>();
 	process.on('SIGTERM', () => f.resolve());

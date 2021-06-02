@@ -5,7 +5,7 @@ import {
 	operations,
 	runDeployment,
 	sigint,
-	sigterm,
+	sigquit,
 } from '@mjuz/core';
 import { Offer, RemoteConnection } from '@mjuz/core/resources';
 import { Behavior } from '@funkia/hareactive';
@@ -62,6 +62,6 @@ const initStack = getStack(
 runDeployment(
 	initStack,
 	operations(Behavior.of(program)),
-	(offerUpdates) => nextAction(offerUpdates, sigint(), sigterm()),
+	(offerUpdates) => nextAction(offerUpdates, sigquit(), sigint()),
 	{ deploymentName: 'bucket', resourcesPort: 19951, deploymentPort: 19952 }
 );

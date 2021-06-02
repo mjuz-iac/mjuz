@@ -5,7 +5,7 @@ import {
 	operations,
 	runDeployment,
 	sigint,
-	sigterm,
+	sigquit,
 } from '@mjuz/core';
 import { at, changes, combine, sinkBehavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
@@ -92,7 +92,7 @@ const initStack = getStack(
 runDeployment(initStack, operations(programState.map(program)), (offerUpdates) =>
 	nextAction(
 		combine(offerUpdates, changes(programState, isDeepStrictEqual).mapTo(undefined)),
-		sigint(),
-		sigterm()
+		sigquit(),
+		sigint()
 	)
 );

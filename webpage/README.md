@@ -23,11 +23,11 @@ PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -
 
 ### Terminate
 
-Stop deployment safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+Stop deployments safely, but do not undeploy resources by `SIGQUIT` interrupt (Ctrl + \ or `kill -3 [PROCESS ID]`).
 
 ### Destroy
 
-Stop deployment safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+Stop deployments safely after undeploying all resources by `SIGINT` interrupt (Ctrl + C or `kill -2 [PROCESS ID]`).
 
 ## Central Reference
 
@@ -83,11 +83,11 @@ PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -
 
 ### Terminate
 
-Stop deployment safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+Stop deployments safely, but do not undeploy resources by `SIGQUIT` interrupt (Ctrl + \ or `kill -3 [PROCESS ID]`).
 
 ### Destroy
 
-Stop deployment safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+Stop deployments safely after undeploying all resources by `SIGINT` interrupt (Ctrl + C or `kill -2 [PROCESS ID]`).
 
 ## Decentral µs Stack Reference
 
@@ -112,11 +112,11 @@ PULUMI_CONFIG_PASSPHRASE= ts-node index.ts | pino-pretty -c -l -i pid,hostname -
 
 ### Terminate
 
-Stop deployments safely, but do not undeploy resources by `SIGINT` interrupt (Ctrl + C or `kill -SIGINT`).
+Stop deployments safely, but do not undeploy resources by `SIGQUIT` interrupt (Ctrl + \ or `kill -3 [PROCESS ID]`).
 
 ### Destroy
 
-Stop deployments safely after undeploying all resources by `SIGTERM` interrupt (`kill`).
+Stop deployments safely after undeploying all resources by `SIGINT` interrupt (Ctrl + C or `kill -2 [PROCESS ID]`).
 
 ## Decentral Reference
 

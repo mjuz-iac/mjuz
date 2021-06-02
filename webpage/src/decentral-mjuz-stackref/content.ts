@@ -5,7 +5,7 @@ import {
 	operations,
 	runDeployment,
 	sigint,
-	sigterm,
+	sigquit,
 } from '@mjuz/core';
 import { Behavior } from '@funkia/hareactive';
 import * as aws from '@pulumi/aws';
@@ -50,5 +50,5 @@ const initStack = getStack(
 );
 
 runDeployment(initStack, operations(Behavior.of(program)), (offerUpdates) =>
-	nextAction(offerUpdates, sigint(), sigterm())
+	nextAction(offerUpdates, sigquit(), sigint())
 );
