@@ -65,7 +65,7 @@ export const reactionLoop = <S>(
 		const recurse = (bufferingNextAction: Behavior<Future<Action>>, state: S): IO<S> =>
 			callP(() => toPromise(runNow(sample(bufferingNextAction)))).flatMap((action) =>
 				call(() => runNow(sample(nextAction))).flatMap((bufferingNextAction) =>
-					call(() => logger.info(`Staring ${action}`))
+					call(() => logger.info(`Starting ${action}`))
 						.flatMap(() => operations(action)(state))
 						.flatMap((newState) =>
 							call(() => {

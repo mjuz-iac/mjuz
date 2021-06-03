@@ -14,12 +14,13 @@ import {
 	Action,
 	newLogger,
 	reactionLoop,
+	setLogLevel,
 	startDeploymentService,
 	startOffersRuntime,
 	startResourcesService,
 } from '.';
 import * as yargs from 'yargs';
-import { Logger } from 'pino';
+import { Level, Logger } from 'pino';
 
 type RuntimeOptions = {
 	deploymentName: string;
@@ -28,6 +29,7 @@ type RuntimeOptions = {
 	heartbeatInterval: number;
 	resourcesHost: string;
 	resourcesPort: number;
+	logLevel: Level;
 };
 
 const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
@@ -35,32 +37,38 @@ const getOptions = (defaults: Partial<RuntimeOptions>): RuntimeOptions =>
 		deploymentName: {
 			alias: 'n',
 			default: defaults.deploymentName || 'deployment',
-			description: 'Name of the deployment (used for identification with other deployments)',
+			description: 'Name of the deployment (used for identification with other deployments).',
 		},
 		deploymentHost: {
 			alias: 'dh',
 			default: defaults.deploymentHost || '0.0.0.0',
-			description: 'Host of the µs deployment service',
+			description: 'Host of the µs deployment service.',
 		},
 		deploymentPort: {
 			alias: 'dp',
 			default: defaults.deploymentPort || 19952,
-			description: 'Port of the µs deployment service',
+			description: 'Port of the µs deployment service.',
 		},
 		resourcesHost: {
 			alias: 'rh',
 			default: defaults.deploymentHost || '127.0.0.1',
-			description: 'Host of the µs resources service',
+			description: 'Host of the µs resources service.',
 		},
 		resourcesPort: {
 			alias: 'rp',
 			default: defaults.resourcesPort || 19951,
-			description: 'Port of the µs resources service',
+			description: 'Port of the µs resources service.',
 		},
 		heartbeatInterval: {
-			alias: 'h',
+			alias: 'hi',
 			default: defaults.heartbeatInterval || 5,
-			description: 'Heartbeat interval on connections between deployments in seconds',
+			description: 'Heartbeat interval on connections between deployments in seconds.',
+		},
+		logLevel: {
+			alias: 'v',
+			default: defaults.logLevel || 'info',
+			description:
+				'Log level: "fatal", "error", "warn", "info", "debug", or "trace". Only affects default logger.',
 		},
 	}).argv as RuntimeOptions;
 
@@ -70,9 +78,10 @@ export const runDeployment = <S>(
 	nextAction: (offerUpdates: Stream<void>) => Behavior<Behavior<Future<Action>>>,
 	options: Partial<RuntimeOptions> & { logger?: Logger; disableExit?: true } = {}
 ): Promise<S> => {
+	const opts = getOptions(options || {});
+	setLogLevel(opts.logLevel);
 	const logger = options.logger || newLogger('runtime');
 	const setup = async () => {
-		const opts = getOptions(options || {});
 		const [resourcesService, deploymentService] = await Promise.all([
 			startResourcesService(
 				opts.resourcesHost,

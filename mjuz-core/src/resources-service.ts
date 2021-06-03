@@ -165,7 +165,7 @@ const resourceService = (
 			const wish = call.request as rpc.Wish;
 			logger.info(
 				wish,
-				`Polling wish for offer '${wish.getName()}' to remote '${wish.getTargetid()}'`
+				`Polling wish for offer '${wish.getName()}' from remote '${wish.getTargetid()}'`
 			);
 			wishPolled.push([fromRpcWish(wish), (err, ro) => cb(err, toRpcRemoteOffer(ro))]);
 		}
@@ -174,7 +174,7 @@ const resourceService = (
 			const wish = call.request as rpc.Wish;
 			logger.info(
 				wish,
-				`Wish  for offer '${wish.getName()}' to remote '${wish.getTargetid()}' deleted`
+				`Wish  for offer '${wish.getName()}' from remote '${wish.getTargetid()}' deleted`
 			);
 			wishDeleted.push(fromRpcWish(wish));
 			cb(null, new Empty());

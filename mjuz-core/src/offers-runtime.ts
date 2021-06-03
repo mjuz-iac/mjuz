@@ -75,7 +75,6 @@ const sendHeartbeats = (
 ): Stream<IO<Remotes>> => {
 	const heartbeat = ([remote, client]: [Remote, rpc.DeploymentClient]) =>
 		new Promise<string | undefined>((resolve) => {
-			logger.trace(`Sending heartbeat to remote '${remote.id}'`);
 			client.heartbeat(new Empty(), (err) => resolve(err ? undefined : remote.id));
 		});
 	const connectedRemotes = (remotes: Remotes, remoteIdsConnected: (string | undefined)[]) =>
@@ -86,13 +85,22 @@ const sendHeartbeats = (
 				return remotes;
 			}, {});
 
-	return snapshot(remotes, trigger).map((remotes) =>
-		callP(() => Promise.all(Object.values(remotes).map(heartbeat))).map(
-			(remoteIdsConnected) => {
-				logger.trace(`Heartbeat successful for remotes: ${remoteIdsConnected}`);
-				return connectedRemotes(remotes, remoteIdsConnected);
-			}
-		)
+	return snapshot(remotes, trigger).map((remotes: Remotes) =>
+		callP(() => {
+			if (Object.keys(remotes).length > 0)
+				logger.trace(`💌 Sending heartbeat to remote(s): ${Object.keys(remotes)}`);
+			return Promise.all(Object.values(remotes).map(heartbeat));
+		}).map((remoteIds) => {
+			const remoteIdsConnected = remoteIds.filter((remoteId) => remoteId !== undefined);
+			if (remoteIdsConnected.length > 0)
+				logger.trace(`💚 Heartbeat successful for remote(s): ${remoteIdsConnected}`);
+			const remoteIdsDisconnected = Object.keys(remotes).filter(
+				(remote) => !remoteIdsConnected.includes(remote)
+			);
+			if (remoteIdsDisconnected.length > 0)
+				logger.trace(`💔 Heartbeat failed for remote(s): ${remoteIdsDisconnected}`);
+			return connectedRemotes(remotes, remoteIdsConnected);
+		})
 	);
 };
 

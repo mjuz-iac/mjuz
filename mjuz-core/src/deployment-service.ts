@@ -45,7 +45,16 @@ const deploymentService = (
 				offer,
 				`Releasing offer '${offer.getName()}' from remote '${offer.getOrigin()}'`
 			);
-			releaseOffers.push([toDeploymentOffer(offer), () => cb(null, new Empty())]);
+			releaseOffers.push([
+				toDeploymentOffer(offer),
+				() => {
+					logger.info(
+						offer,
+						`Released offer '${offer.getName()}' from remote '${offer.getOrigin()}'`
+					);
+					cb(null, new Empty());
+				},
+			]);
 		}
 
 		heartbeat(call: grpc.ServerUnaryCall<Empty, Empty>, cb: sendUnaryData<Empty>): void {
