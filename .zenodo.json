@@ -1,0 +1,23 @@
+{
+  "license": "Apache-2.0",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Sokolowski, Daniel",
+      "affiliation": "Technical University of Darmstadt",
+      "orcid": "0000-0003-2911-8304"
+    },
+    {
+      "name": "Weisenburger, Pascal",
+      "affiliation": "University of St. Gallen",
+      "orcid": "0000-0003-1288-1485"
+    },
+    {
+      "name": "Salvaneschi, Guido",
+      "affiliation": "University of St. Gallen",
+      "orcid": "0000-0002-9324-8894"
+    }
+  ],
+  "access_right": "open",
+  "language": "eng"
+}
