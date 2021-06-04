@@ -63,6 +63,77 @@ You develop an IaC program with the µs library and run it together with the dep
 	
 ## Docker
 
+We provide a Docker image of this repository on Docker Hub as [mjuz/mjuz](https://hub.docker.com/r/mjuz/mjuz).
+It contains preinstalled all dependencies and this repository's content in `/var/mjuz`,
+including the setup of the required [Pulumi for µs](https://github.com/mjuz-iac/pulumi) CLI (the image is based on [mjuz/pulumi](https://hub.docker.com/r/mjuz/mjuz)).
+To simplify testing, it is preconfigured to store deployment state on the local filesystem inside the container,
+instead of the Pulumi Cloud (`pulumi login --local`).
+As passphrase for all operations on the state files "PASS" is preconfigured (environment variable default: `PULUMI_CONFIG_PASSPHRASE=PASS`).
+If you want to use the container for more than testing purposes,
+replace the passphrase and configure Pulumi's backend to persist the deployment state in a durable storage outside the container,
+e.g., the Pulumi Cloud, AWS S3, or a persistent filesystem (cf. [Pulumi's Backends](https://www.pulumi.com/docs/intro/concepts/state/)).
+For more details on the container setup,
+look at the images build definition [Dockerfile](Dockerfile).
+
+### Interactive Usage
+
+Start an interactive bash session in a transient container that automatically is disposed on exit:
+
+```bash
+docker run --rm -ti mjuz/mjuz
+```
+
+Run multiple, separate interactive bash sessions in a named durable container
+(replace `<NAME>` with a unique container name):
+
+```bash
+# Start an indefinitely running container.
+docker run -d --name <NAME> mjuz/mjuz tail -f /dev/null
+
+# Start an interactive bash session in the container (do this multiple times in parallel).
+# Exiting such a session will not stop nor dispose the container.
+docker exec -ti <NAME> bash
+
+# Stop the container
+docker kill <NAME>
+# Restart the container
+docker start <NAME>
+# Dispose the container (after stopping)
+docker rm <NAME>
+```
+
+## Managing AWS Resources
+
+To manage AWS resources, you need to provide credentials for your AWS account to the [Pulumi for µs](https://github.com/mjuz-iac/pulumi) CLI.
+The Pulumi documentation provides a [detailed manual](https://pulumi.io/install/aws.html) for this.
+
+There are two simple ways to use AWS with the [mjuz/mjuz](https://hub.docker.com/r/mjuz/mjuz) Docker image:
+
+1. Provide the credentials as environment variables to the container.
+
+	* Set the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in the run command of the container by adding:
+	  ```bash
+	  -e AWS_ACCESS_KEY_ID=<YOUR_ACCESS_KEY_ID> -e AWS_SECRET_ACCESS_KEY=<YOUR_SECRET_ACCESS_KEY>
+	  ```
+	* This can be applied to all `docker run` commands shown [above](#interactive-usage). For example:
+	  ```bash
+	  docker run --rm -ti -e AWS_ACCESS_KEY_ID=<YOUR_ACCESS_KEY_ID> -e AWS_SECRET_ACCESS_KEY=<YOUR_SECRET_ACCESS_KEY> mjuz/mjuz
+	  ```
+	
+2. Share a local credentials file with the container, e.g., created by logging into the AWS CLI.
+
+	* For an explanation of the file format and how it can be generated using the AWS CLI, please look at the [Pulumi's documentation on it](https://pulumi.io/install/aws.html).
+	* Add a bind mount to your `docker run` command mounting the credentials file at `/home/user/.aws/credentials`.
+	  E.g., if your credentials file is at `$HOME/.aws/credentials` (default of the AWS CLI), add:
+	  ```bash
+	  -v $HOME/.aws/credentials:/home/user/.aws/credentials
+	  ```
+      *Make sure to use absolute paths as Docker's bind mounts do not support relative paths.*
+	* This can be applied to all `docker run` commands shown [above](#interactive-usage). For example:
+	  ```bash
+	  docker run --rm -ti -v $HOME/.aws/credentials:/home/user/.aws/credentials mjuz/mjuz
+	  ```
+
 ## Development Setup
 
 To develop in this repository you need a global installation of Yarn (install by `npm install -g yarn`).
@@ -70,7 +141,7 @@ To execute TypeScript projects directly, installing `ts-node` can be handy (`npm
 To setup the projects in this repository, link all dependencies and apply patches for development
 you only need to run:
 
-```
+```bash
 yarn install
 ```
 
@@ -105,11 +176,11 @@ This breaks the resolution of modules which are required, e.g., for dynamic reso
 This can be solved by setting the workspace's work directory to the cwd (`.`).
 More details on this issue: https://github.com/pulumi/pulumi/issues/5578
 
-### GRPC fail in dynamic resource
+### gRPC fails in dynamic resource
 
 The Pulumi resource serialization breaks generated gRPC code.
 To solve this issue, the generated gRPC source is outsourced to `@mjuz/grpc-protos`
 (because Pulumi does not serialize external packages but loads them directly).
-However, Pulumi serializes external package, if it is not plainly installed to node_modules, but only symlinked.
+However, Pulumi serializes an external package, if it is not plainly installed to `node_modules`, but only symlinked.
 Thus, for development, `@mjuz/grpc-protos` must be copied into `@mjuz/core`'s dependencies and cannot only be linked.
 This is implemented in the postinstall hook of this repo's root and is automatically executed with `yarn install`.
