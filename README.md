@@ -26,10 +26,12 @@ Learn more on the [website](https://mjuz.rocks) and in the [paper](https://mjuz.
 
 ## Repository Structure
 
-`├── mjuz-core` µs SDK and runtime.\
-`├── mjuz-grpc-protos` µs GRPC prototype definitions.\
-`├── patches` Manual patches applied to dependencies (mostly quick-fixes).\
-`└── webpage` Simple example project, showcasing µs in various versions and comparing it to [Pulumi](https://pulumi.com).
+```
+├── mjuz-core        µs SDK and runtime.
+├── mjuz-grpc-protos µs GRPC prototype definitions.
+├── patches          Manual patches applied to dependencies (mostly quick-fixes).
+└── webpage          Simple example project, showcasing µs in various versions and comparing it to Pulumi.
+```
 
 ## Getting Started
 
