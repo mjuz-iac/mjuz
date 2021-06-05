@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/373524328.svg)](https://zenodo.org/badge/latestdoi/373524328)
 [![GitHub version](https://badge.fury.io/gh/mjuz-iac%2Fmjuz.svg)](https://badge.fury.io/gh/mjuz-iac%2Fmjuz)
 [![npm version](https://badge.fury.io/js/%40mjuz%2Fcore.svg)](https://badge.fury.io/js/%40mjuz%2Fcore)
 
