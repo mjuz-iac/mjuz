@@ -3,7 +3,7 @@
 
 # µs Infrastructure as Code
 
-µs is a modern, declarative infrastructure as code (IaC) solution based on [Pulumi](https://pulumi.com) and Typescript.
+[µs](https://mjuz.rocks) is a modern, declarative infrastructure as code (IaC) solution based on [Pulumi](https://pulumi.com) and Typescript.
 It enables safe deployments in DevOps organizations with cross-functional teams
 by inventing decentralized automated deployment coordination.
 
