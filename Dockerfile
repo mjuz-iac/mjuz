@@ -1,4 +1,4 @@
-FROM mjuz/pulumi:1.0.0-RC0
+FROM mjuz/pulumi:1.0.0
 
 WORKDIR /var/mjuz
 COPY . .

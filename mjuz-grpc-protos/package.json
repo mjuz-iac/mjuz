@@ -1,6 +1,6 @@
 {
   "name": "@mjuz/grpc-protos",
-  "version": "1.0.0-RC0",
+  "version": "1.0.0",
   "description": "µs gRPC Protocol Buffer Descriptions",
   "author": "Daniel Sokolowski <github@d.sokolowski.org>",
   "homepage": "https://github.com/allprojects/decentralized-deployments#read",
