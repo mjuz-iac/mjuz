@@ -1,6 +1,6 @@
 {
   "name": "@mjuz/core",
-  "version": "0.0.0",
+  "version": "1.0.0-RC0",
   "description": "µs Runtime and Resource Provider",
   "author": "Daniel Sokolowski <github@d.sokolowski.org>",
   "homepage": "https://github.com/allprojects/decentralized-deployments#read",
@@ -69,7 +69,7 @@
     "typescript": "4.2.4"
   },
   "dependencies": {
-    "@mjuz/grpc-protos": "0.0.0",
+    "@mjuz/grpc-protos": "1.0.0-RC0",
     "yargs": "17.0.1"
   },
   "peerDependencies": {

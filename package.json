@@ -1,5 +1,6 @@
 {
   "name": "root",
+  "version": "1.0.0-RC0",
   "private": true,
   "scripts": {
     "build": "yarn workspaces foreach -pt run build",
